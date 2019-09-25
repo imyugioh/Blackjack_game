@@ -1,0 +1,254 @@
+<!doctype html>
+<html class="no-js h-100" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Blackjack Dashboard</title>
+    <meta name="description" content="A high-quality &amp; free Bootstrap admin dashboard template pack that comes with lots of templates and components.">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+    <link rel="icon" href="images/icon.jpeg" type="image/x-icon"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet" id="main-stylesheet" data-version="1.1.0" href="styles/shards-dashboards.1.1.0.css">
+    <link rel="stylesheet" href="styles/extras.1.1.0.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css">
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+  </head>
+  <body class="h-100">
+    <div class="container-fluid">
+      <div class="row">
+        <!-- Main Sidebar -->
+        <aside class="main-sidebar col-12 col-md-3 col-lg-2 px-0">
+          <div class="main-navbar">
+            <nav class="navbar align-items-stretch navbar-light bg-white flex-md-nowrap border-bottom p-0">
+              <div class="d-table m-auto">
+                <img id="main-logo" class="d-inline-block align-top mr-1" style="max-width: 25px;" src="images/icon.jpeg" alt="Shards Dashboard">
+                <span class="d-none d-md-inline ml-1">BlackJack Dashboard</span>
+              </div>
+              <a class="toggle-sidebar d-sm-inline d-md-none d-lg-none">
+                <i class="material-icons">&#xE5C4;</i>
+              </a>
+            </nav>
+          </div>
+          <form action="#" class="main-sidebar__search w-100 border-right d-sm-flex d-md-none d-lg-none">
+            <div class="input-group input-group-seamless ml-3">
+              <div class="input-group-prepend">
+                <div class="input-group-text">
+                  <i class="fas fa-search"></i>
+                </div>
+              </div>
+              <input class="navbar-search form-control" type="text" placeholder="Search for something..." aria-label="Search"> </div>
+          </form>
+          <div class="nav-wrapper">
+            <ul class="nav flex-column">
+              <li class="nav-item">
+                <a class="nav-link" href="/">
+                  <i class="material-icons">edit</i>
+                  <span>Overview</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link active" href="/users">
+                  <i class="material-icons">person</i>
+                  <span>Manage Users</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link " href="/tables">
+                  <i class="material-icons">table_chart</i>
+                  <span>Manage Tables</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </aside>
+        <!-- End Main Sidebar -->
+        
+        <main class="main-content col-lg-10 col-md-9 col-sm-12 p-0 offset-lg-2 offset-md-3" style="background:url('images/table/6.jpg');height:100vh">          
+          
+          <div class="main-content-container container-fluid px-4">
+
+            <!-- Page Header -->
+            <div class="page-header row no-gutters py-4">
+              <div class="col-12 col-sm-4 text-center text-sm-left mb-0">
+                <h1 class="page-title">User Management</h1>
+              </div>
+            </div>
+            <!-- End Page Header -->
+            <!-- Default Light Table -->
+            <button type="button" id="adduser" class="mb-2 btn btn-sm btn-outline-primary mr-1">Add User</button>
+            <div class="row">
+              <div class="col">
+                <table id="usertable" class="table mb-0">
+                  <thead class="bg-light">
+                    <tr>
+                      <th scope="col" class="border-0">No</th>
+                      <th style="display: none;">ID</th>
+                      <th scope="col" class="border-0">Name</th>
+                      <th scope="col" class="border-0">Password</th>
+                      <th scope="col" class="border-0">Gender</th>
+                      <th scope="col" class="border-0">Email</th>
+                      <th scope="col" class="border-0">Gold</th>
+                      <th scope="col" class="border-0">Credits</th>
+                      <th scope="col" class="border-0">BitCoin</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-light">
+                    <% 
+                    var index = 0;
+                    for (var i in users){
+                      index ++;
+                      %>
+                      <tr>
+                        <td><%= index %></td>
+                        <td style="display: none;"><%= users[i]._id %></td> 
+                        <td><%= users[i].username %></td>
+                        <td><%= users[i].password %></td>
+                        <td><%= users[i].gender == 1 ? "Man" : "Woman" %></td>
+                        <td><%= users[i].email %></td>
+                        <td><%= users[i].gold %></td>
+                        <td><%= parseInt(decrypt(users[i].credits)) %></td>
+                        <td><%= users[i].bitcoin_id %></td>
+                      </tr>                      
+                    <% }%>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- End Default Light Table -->  
+            <!-- The Edit Modal -->
+            <div class="modal fade" id="usermodal">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                
+                  <!-- Modal Header -->
+                  <div class="modal-header">
+                    <h4 class="modal-title" style="color:black">Edit User</h4>
+                    <button type="button" class="close" data-dismiss="modal">×</button>
+                  </div>
+                  
+                  <!-- Modal body -->
+                  <form id="userform" action="/users/edit" method="post">
+                     <div class="modal-body">
+                        <input type="hidden" name="userid" id="userid">       
+                        <div class="form-row">
+                          <div class="form-group col-md-9">
+                              <label>User name</label>
+                              <input type="text" class="form-control" id="username" name="username" placeholder="User name" required>
+                          </div>
+                          <div class="form-group col-md-3">
+                              <label>Gender</label>
+                              <select class="form-control" name="gender" id="gender">
+                                <option value="Man">Man</option>
+                                <option value="Woman">Woman</option>
+                              </select>
+                          </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                          <input type="text" class="form-control" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" title="Must contain at least one number and one uppercase and lowercase letter, and at least 8 or more characters" name="password" id="password" placeholder="Password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                          <input type="email" class="form-control" name="email" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="Invalid Email Address" id="email" placeholder="Email" required>
+                        </div>
+                        <div class="form-group">
+                          <label>Gold</label>
+                          <input type="number" class="form-control" name="gold" id="gold" placeholder="Gold" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Credits</label>
+                          <input type="number" class="form-control" name="credits" id="credits" placeholder="Credits" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Bitcoin ID</label>
+                          <input type="text" class="form-control" name="bitcoinid" id="bitcoin_id" placeholder="Bitcoin ID">
+                        </div>
+                    </div>
+                    
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                      <button type="submit" class="btn btn-primary">Save</button>
+                      <button type="button" id="deleteacc" class="btn btn-danger">Delete</button>
+                      <button type="button" class="btn btn-warning" data-dismiss="modal">Cancel</button>
+                    </div>
+                  </form>
+                  
+                </div>
+              </div>
+            </div>
+            <!-- Add Modal-->
+            <div class="modal fade" id="addusermodal">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                  
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                      <h4 class="modal-title" style="color:black">Add User</h4>
+                      <button type="button" class="close" data-dismiss="modal">×</button>
+                    </div>
+                    
+                    <!-- Modal body -->
+                    <form class="adduserform" action=""> 
+                      <div class="modal-body">   
+                        <div class="form-row">
+                          <div class="form-group col-md-9">
+                              <label>User name</label>
+                              <input type="text" class="form-control" id="username" name="username" placeholder="User name" required>
+                          </div>
+                          <div class="form-group col-md-3">
+                              <label>Gender</label>
+                              <select class="form-control" name="gender" id="gender">
+                                <option value="Man">Man</option>
+                                <option value="Woman">Woman</option>
+                              </select>
+                          </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                          <input type="text" class="form-control" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" title="Must contain at least one number and one uppercase and lowercase letter, and at least 8 or more characters" name="password" id="password" placeholder="Password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                          <input type="email" class="form-control" name="email" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}$" title="Invalid Email Address" id="email" placeholder="Email" required>
+                        </div>
+                        <div class="form-group">
+                          <label>Gold</label>
+                          <input type="number" class="form-control" name="gold" id="gold" placeholder="Gold" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Credits</label>
+                          <input type="number" class="form-control" name="credits" id="credits" placeholder="Credits" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Bitcoin ID</label>
+                          <input type="text" class="form-control" name="bitcoinid" id="bitcoin_id" placeholder="Bitcoin ID">
+                        </div>
+                     </div>
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                      <input type="submit" id="adduserbtn" class="btn btn-primary" value="Add">
+                      <button type="button" class="btn btn-warning" data-dismiss="modal">Cancel</button>
+                    </div>
+                   </form>                   
+                  </div>
+                </div>
+              </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+    <script src="https://unpkg.com/shards-ui@latest/dist/js/shards.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sharrre/2.0.1/jquery.sharrre.min.js"></script>
+    <script src="scripts/extras.1.1.0.min.js"></script>
+    <script src="scripts/blackjack-datatable.js"></script>
+    <script src="scripts/shards-dashboards.1.1.0.min.js"></script>
+  </body>
+</html>

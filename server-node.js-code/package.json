@@ -1,0 +1,36 @@
+{
+  "name": "blackjack",
+  "version": "1.0.0",
+  "description": "Blackjack backend",
+  "main": "server.js",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "mongoose": "^5.5.11",
+    "socket.io": "^2.2.0",
+    "underscore": "^1.9.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stepanov1016/blackjack.git"
+  },
+  "keywords": [
+    "socket",
+    "realtime",
+    "websocket",
+    "express",
+    "node",
+    "blackjack"
+  ],
+  "author": "Maxim Stepanov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stepanov1016/blackjack/issues"
+  },
+  "homepage": "https://github.com/stepanov1016/blackjack#readme"
+}

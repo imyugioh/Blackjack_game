@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <style>
+      .container{
+        width:1000px;
+        height:600px;
+      }
+      .chatarea .roomarea {
+        display: flex;
+        flex-direction: column;
+        height:100%;
+      }
+      .list-group{
+        margin-bottom: 10px;
+        overflow-y:auto;
+        height: 500px;
+      }
+      #gmessages li{
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container shadow-lg p-3 mt-5 border border-primary bg-white rounded">
+      <div class="list-group roomlist">
+      </div>
+      <div class="mainroom">
+          <div class="row h-100">
+            <div class="col-md-3">
+              <div class="roomarea">
+                  Room Players
+                  <ul id="playerlist" class="list-group">
+                  </ul>
+                  <button type="button" id="backbtn" class="btn btn-primary">Back</button>
+              </div>
+            </div>
+            <div class="col-md-9">
+              <div class="chatarea border">
+                  <ul id="messages" class="list-group">
+                  </ul>
+                  <form action="" class="form-inline msgform">
+                      <input type="text" class="form-control col-md-10" placeholder="Type message here" id="msgbox" autocomplete="off" />
+                      <button type="button" class="btn btn-primary col-md-2" type="submit">Send</button>
+                  </form>
+              </div>
+            </div>
+          </div>
+      </div>
+    </div>
+    <script>
+      var socket = io();
+      $(function () {
+        var username = "<%=name%>";
+        let roomInfo = {};
+        let messageList = [];
+        $(window).load(function(){
+          socket.emit('login', {name:username});
+          $('.mainroom').hide();
+        });
+        function displayMessage(msg) {  
+          if (!messageList[roomInfo.id])
+            messageList[roomInfo.id] = [];
+          messageList[roomInfo.id].push(msg);        
+          $('#messages').empty();
+          for (var i = 0;i < messageList[roomInfo.id].length;i++)
+            $('#messages').append($('<li>').addClass('list-group-item').text(messageList[roomInfo.id][i]));   
+          $('#messages').animate({scrollTop: $('#messages').prop("scrollHeight")}, 1);  
+        }
+        $('form').submit(function(e){
+          e.preventDefault();
+          socket.emit('toAll', {roomid:roomInfo.id, name:username, text:$('#msgbox').val()});
+          $('#msgbox').val('');
+          return false;
+        });
+        socket.on('toAll', function(msg){
+          displayMessage(msg);       
+        });
+        socket.on('statusinfo', function(msg){
+          displayMessage(msg);        
+        });
+        socket.on('roomlist', function(data){
+          $('.roomlist').empty();
+          for (var i = 0;i < data.length;i++) {
+            var str = "Room " + (i + 1) + " - " + "Players : " + data[i].players.length + "/" + data[i].max_player +", Buy in limit : " + data[i].buy_in_limit + ", Raise Min/Max : " + data[i].raise_min + "/" + data[i].raise_max + ", Custom Table : " + (data[i].customed == true ? "True" : "False");
+            $('.roomlist').append($('<a>').addClass('list-group-item list-group-item-action').attr("href", "").attr("room_id", i).text(str));
+          }
+
+          $('.roomlist a').on('click', function (e) {
+            e.preventDefault();
+
+            const id = $(e.target).attr("room_id");
+            $('.roomlist').hide();
+            $('.mainroom').show();
+            socket.emit('join_room', id);
+          })
+        });
+        socket.on('error_message', function(msg){
+          alert(msg);
+          $('.roomlist').show();
+          $('.mainroom').hide();
+        });
+        socket.on('initroom', function(roomid, data){
+          roomInfo = data;
+          roomInfo.id = roomid;
+        });
+
+        socket.on('userlist', function(data){
+          $('#playerlist').empty();
+          for (var i = 0;i < data.length;i++)
+            $('#playerlist').append($('<li>').addClass('list-group-item').text(data[i].name));      
+        });
+        $('#backbtn').click(function(e){
+          e.preventDefault();
+          $('.mainroom').hide();
+          $('.roomlist').show();
+          socket.emit('left_room');
+        });
+      });
+    </script>
+  </body>
+</html>
