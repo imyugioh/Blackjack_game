@@ -97,3 +97,102 @@ app.post('/tables/edit/', async function(req, res){
   });
   res.redirect('/tables');
 });
+
+app.post('/tables/add/', async function(req, res){
+  const {table_name, buyin_limit, raise_min, raise_max, customed, Max_player, Min_player} = req.body;
+  let newtable = new tablemodel({table_name, buyin_limit, raise_min, raise_max, customed, Max_player, Min_player});
+  newtable.save().then(result=>{
+    console.log('Table Added');
+    initRoom(roomlist.length, table_name, parseInt(buyin_limit), parseInt(raise_min), parseInt(raise_max), customed == "true" ? true : false, parseInt(Max_player), parseInt(Min_player));
+    res.status(200).json({success:true});
+  }).catch((err) => {
+    console.log(err);
+    res.status(400).json({success:false});
+  });
+});
+
+//define variables
+
+// let players = [];  //real game players
+
+// var initPlayer = function(id, name, money, roomID) {
+//     this.id = id;
+//     this.name = name;
+//     this.money = money;
+//     this.betMoney = 0;
+//     this.totalScore = 0;
+//     this.hand = [];
+//     this.roomID = roomID;
+// }
+
+let roomlist = [];
+let allUsers = [];
+let loggedUsers = [];
+var MAX_PLAYER = 2;
+var MIN_PLAYER = 2;
+var maxBet=0;
+var casinoSharePercent=1;
+var customTableCreated = false;
+
+//define functions
+
+function saveRoomMessage(data)
+{
+  //save to database
+  console.log("Doing something creepy with data.");
+  return `${data.name} : ${data.text}`
+}
+
+function getRoomList()
+{
+  let trimmedRoomList = [];
+
+  for(var i = 0; i < roomlist.length; i++)
+  {
+    let room = {
+      name: roomlist[i].name,
+      raise_max: roomlist[i].raise_max,
+      raise_min: roomlist[i].raise_min,
+      buy_in_limit: roomlist[i].buy_in_limit,
+      customTableCreated: roomlist[i].customTableCreated,
+      currentPlayerCount: roomlist[i].players.length,
+      max_player: roomlist[i].max_player,
+      customed : roomlist[i].customed,
+    };
+
+    trimmedRoomList.push(room);
+  }
+
+  return JSON.stringify(trimmedRoomList);
+}
+
+function resetRoom(roomId)
+{
+  let room = roomlist[roomId];
+  console.log("Reset Room function called.");
+  if(room)
+  {
+    room.total_bet = 0;
+    room.maximum_bet = 0;
+    room.prev_maximum_bet = 0;
+    room.turnIndex = 0;
+    room.previousRound = "";
+    room.currentRound = "intitial";
+    room.hitBlackjack = false;
+    room.tempPlayerId = "";
+    room.hitBlackjack =false;
+
+    if(room.customed && room.customTableCreated)
+    {
+      room.customTableCreated = false;
+      console.log("Custom Room Cleared.");
+    }
+
+    for(var i = 0; i < room.rounds.length; i++)
+    {
+      console.log(room.rounds[i].round +" reset.");
+      room.rounds[i].completed = false;
+    }
+    console.log("Room refreshed.");
+  }
+}
