@@ -196,3 +196,219 @@ function resetRoom(roomId)
     console.log("Room refreshed.");
   }
 }
+
+function initRoom(id, name, buy_in_limit, raise_min, raise_max, customed, maxplayer, minplayer)
+{
+  roomlist[id] = {};
+  roomlist[id].name = name;
+  roomlist[id].tempPlayerId = "";
+  roomlist[id].lastWinnerID = "";
+  roomlist[id].buy_in_limit = buy_in_limit;
+  roomlist[id].raise_min = raise_min;
+  roomlist[id].raise_max = raise_max;
+  roomlist[id].customed = customed;
+  roomlist[id].customTableCreated = false;
+  roomlist[id].max_player = maxplayer;
+  roomlist[id].min_player = minplayer;
+  roomlist[id].total_bet  = 0; // to be reset at start of every game
+  roomlist[id].maximum_bet = 0; //maximum bet of this game by some player
+  roomlist[id].prev_maximum_bet = 0;
+  roomlist[id].players = [];
+  roomlist[id].turnIndex = 0;
+  roomlist[id].previousRound = "";
+  roomlist[id].currentRound = "initial";
+  roomlist[id].hitBlackjack = false;
+  roomlist[id].intervalID = null;
+  roomlist[id].rounds = [{
+	  round: "Betting Round",
+	  timeOut: 30,
+	  completed: false,
+    raiseLimit: "unlimited"
+  },
+  {
+	 round: "Blackjack Round",
+	 timeOut: 45,
+	 completed: false,
+   raiseLimit: 1
+  },
+  {
+	  round: "Hitting Round",
+	  timeOut: 15,
+	  completed: false,
+    raiseLimit: "unlimited"
+  },
+  {
+    round: "Hitting Round Completion",
+    timeOut: 15,
+    completed: false,
+    raiseLimit: "unlimited"
+  },
+  {
+    round: "Game Completed",
+    timeOut: 15,
+    completed: false,
+    raiseLimit: "unlimited"
+  }];
+}
+
+function initDefaultRooms()
+{
+  // createTimer(10, function(value){
+  //   console.log(value +" Tick Tock");
+  // },
+  // function(){
+  //   console.log("ITS WORKING!!!!");
+  // });
+
+  console.log("Rooms initialized.");
+  //for the test
+  //save to database
+  tablemodel.countDocuments(function(err, res) {
+    if (err) return console.log(err);
+    if (!res) {
+      initRoom(0, "Room 1", 500, 20, 100, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(1, "Room 2", 1000, 50, 300, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(2, "Room 3", 1500, 50, 400, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(3, "Room 4", 700, 10, 50, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(4, "Room 5", 5000, 500, 1200, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(5, "Room 6", 0, 0, 0, true, MAX_PLAYER, MIN_PLAYER);
+
+      tablemodel.insertMany([{table_name: "Room 1", buyin_limit: 500, raise_min: 20, raise_max: 100, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 2", buyin_limit: 1000, raise_min: 50, raise_max: 300, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 3", buyin_limit: 1500, raise_min: 50, raise_max: 400, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 4", buyin_limit: 700, raise_min: 10, raise_max: 50, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 5", buyin_limit: 5000, raise_min: 500, raise_max: 1200, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 6", buyin_limit: 0, raise_min: 0, raise_max: 0, customed: true, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER}],
+      {ordered: true}, function(err, res){
+        if (err) return console.log(err);
+        console.log("Table Created");
+      });
+    } else {
+      tablemodel.find({}, function(err, res){
+        for(var i = 0;i < res.length;i ++) {
+          initRoom(i, res[i].table_name, res[i].buyin_limit, res[i].raise_min, res[i].raise_max, res[i].customed, res[i].Max_player, res[i].Min_player);
+        }
+      })
+      console.log('Tables already exist');
+    }
+  });
+  //end
+}
+
+function saveChathistory(info) {
+  let newchat = new historymodel({channel: info.channel, from: info.sender, message: info.message});
+  newchat.save().then(function(res) {
+    console.log(res);
+  });
+  return info;
+}
+
+function GenerateRoom()
+{
+  var count = 0;
+  for (var i = 0; i < roomlist.length;i++)
+  {
+    if (roomlist[i].players.length == roomlist[i].max_player)
+      count++;
+  }
+  if (count == roomlist.length)
+    initRoom(roomlist.length, 0, 0, 0, true);
+}
+
+function checkRoomFull(room)
+{
+  if (room.players.length == room.max_player)
+    return true;
+  return false;
+}
+
+function updateTotalBet(data,socketChannel)
+{
+	roomlist[socketChannel].total_bet +=data ;
+	console.log("this bet is of "+data +" and Total bet on table is : " + roomlist[socketChannel].total_bet +" while maximum bet is: " +roomlist[socketChannel].maximum_bet);
+}
+
+function updateBetAccepted(data,socketChannel)
+{
+	for(var i = 0; i < roomlist[socketChannel].players.length; i++) {
+		if(roomlist[socketChannel].players[i].id != data){
+		roomlist[socketChannel].players[i].betAccepted=false;
+		}
+	}
+}
+
+function switchTurn(playerId, socketChannel)
+{
+  var user = _.findWhere(roomlist[socketChannel].players, {id:playerId});
+  var someData = {
+      id : playerId,
+      betAccepted : user.betAccepted,
+      currentRound : roomlist[socketChannel].currentRound
+  };
+
+  var playerIdNum = playerId;
+  var roomChannel = socketChannel;
+
+  io.in(roomChannel).emit('switchTurn', someData);
+  console.log(someData.id +" Turn!");
+
+  createTimer(30, function(retValue){
+    timerStarted(retValue, roomChannel, playerIdNum)
+  }, function(){
+    switch (roomlist[roomChannel].currentRound) {
+      case "Betting Round":
+
+        // switch (roomlist[socketChannel].previousRound) {
+        //   case "Blackjack Round":
+        //   console.log(user.name+" not responded in blackjack round => betting round, forcing accept bet.");
+        //   io.in(socketChannel).emit('OnForcedAcceptBet', {id: user.id});
+        //   break;
+        //   case "Hitting Round":
+        //   console.log(user.name+" not responded in hitting round => betting round, forcing accept bet.");
+        //   io.in(socketChannel).emit('OnForcedAcceptBet', {id: user.id});
+        //   break;
+        //   default:
+        // }
+
+      console.log("User not responded in betting round, forcing forfeit.");
+      io.in(roomChannel).emit('OnForcedForfeit', {id: user.id});
+      break;
+      case "Blackjack Round":
+        if(user)
+        {
+          if(!user.hasChecked)
+          {
+            console.log("User not responded in blackjack round, forcing check.");
+            io.in(roomChannel).emit('OnForcedChecked', {id: user.id});
+          }
+        }
+      break;
+      case "Hitting Round":
+      if(user)
+      {
+        if(!user.standTaken && !user.hasChecked)
+        {
+          console.log("User not responded in hitting round, forcing stand.");
+          io.in(roomChannel).emit('OnForcedStand', {id: user.id});
+        }else if(user.standTaken && !user.hasChecked)
+        {
+          console.log("User not responded in hitting round, forcing check.");
+          io.in(roomChannel).emit('OnForcedChecked', {id: user.id});
+        }
+      }
+      break;
+      case "Hitting Round Completion":
+      if(user)
+      {
+        if(!user.hasChecked)
+        {
+          console.log("User not responded in Hitting Round Completion, forcing check.");
+          io.in(roomChannel).emit('OnForcedChecked', {id: user.id});
+        }
+      }
+      break;
+      default:
+    }
+    console.log("ITS WORKING!!!!");
+  }, roomChannel);
+}
