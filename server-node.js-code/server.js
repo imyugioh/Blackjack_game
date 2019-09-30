@@ -412,3 +412,188 @@ function switchTurn(playerId, socketChannel)
     console.log("ITS WORKING!!!!");
   }, roomChannel);
 }
+
+function createTimer(timeOut, intervalFunction, endFunction, roomid)
+{
+  console.log("Create Timer function called.");
+  let seconds = timeOut;
+
+  if(roomlist[roomid].intervalID != null)
+  {
+    clearInterval(roomlist[roomid].intervalID);
+    roomlist[roomid].intervalID = null;
+  }
+
+  roomlist[roomid].intervalID = setInterval(function() {
+        seconds = seconds - 1 >= 0 ? seconds - 1 : 0;
+        let progress = seconds / timeOut;
+
+        let data = {
+          duration: seconds,
+          progress: progress,
+          totalTimeOut: timeOut
+        }
+
+        intervalFunction(data);
+        if(seconds <= 0)
+        {
+          clearInterval(roomlist[roomid].intervalID);
+          endFunction();
+          console.log("interval cleared.");
+        }
+    }, 1000);
+}
+
+function timerStarted(value, socketChannel, playerID)
+{
+  value.id = playerID;
+  io.in(socketChannel).emit('OnTimerUpdated', value);
+}
+
+function timerCompleted(socketChannel, playerId)
+{
+  console.log("ITS WORKING!!!!");
+}
+
+function destroyTimer(socketChannel)
+{
+  if(roomlist[socketChannel].intervalID != null)
+  {
+    clearInterval(roomlist[socketChannel].intervalID);
+    roomlist[socketChannel].intervalID = null;
+    console.log("timer destroyed.");
+  }
+}
+
+function getRound(round, socketChannel){
+  let roundData = _.findWhere(roomlist[socketChannel].rounds, {round:round});
+  return roundData;
+}
+
+function distributeInsuranceAmount(socketChannel,winnerId){
+    for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+    {
+      if(roomlist[socketChannel].players[i].id != winnerId && roomlist[socketChannel].players[i].insuranceAccepted){
+        console.log("blackjack insurance mil gyi name = " + roomlist[socketChannel].players[i].name);
+        roomlist[socketChannel].players[i].gold += (roomlist[socketChannel].players[i].insuredAmount + roomlist[socketChannel].players[i].goldOnTable)/2;
+        roomlist[socketChannel].total_bet -= roomlist[socketChannel].players[i].goldOnTable/4;
+        roomlist[socketChannel].players[i].goldOnTable =0;
+        roomlist[socketChannel].players[i].insuranceAccepted=false;
+        io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
+      }
+    }
+}
+
+function checkWinner(socketChannel)
+{
+  let winner = [];
+    let totalWinners=0;
+    for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+    {
+    if(roomlist[socketChannel].players[i].points == 21){
+      winner[totalWinners]=roomlist[socketChannel].players[i];
+      console.log(winner[0].name + " is winner with points: " +winner[0].points + " total winners "+ totalWinners+1) ;
+      totalWinners++;
+      distributeInsuranceAmount(socketChannel,roomlist[socketChannel].players[i].id);
+    }
+  }
+  if(totalWinners == 1 && !winner[0].won)
+   {
+     //if only one player has blackjack
+     winner[0].won = true;
+     let winningUser= _.findWhere(roomlist[socketChannel].players,{id: winner[0].id});
+     if(winningUser){
+      console.log("winning user in blackjack round is");
+      console.log(winningUser);
+      console.log("////////////////////////////////////");
+
+     }
+	 deductCasinoShare(socketChannel);
+     winner[0].gold +=roomlist[socketChannel].total_bet;
+     winner[0].goldOnTable =0;
+     console.log(winner[0].name + " is winner with points: " +winner[0].points);
+     for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+      roomlist[socketChannel].players[i].won =true;
+       if(winner[0].id != roomlist[socketChannel].players[i].id){
+         roomlist[socketChannel].players[i].goldOnTable = 0;
+       }
+
+       roomlist[socketChannel].currentRound = "Game Completed";
+       io.in(socketChannel).emit('OnBlackjack', roomlist[socketChannel].players[i]);
+       io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
+
+       roomlist[socketChannel].lastWinnerID = winner[0].id;
+     }
+     //Hitting round should not start as a player has blackjack in blackjack round
+   }
+   else if(totalWinners > 1){
+     //if multiple players have blackjack
+	  deductCasinoShare(socketChannel);
+     for(var i = 0; i < winner.length; i++){
+       if(!winner[i].won)
+       {
+         winner[i].won = true;
+         winner[i].gold += roomlist[socketChannel].total_bet / winner.length;
+         winner[0].goldOnTable =0;
+       }
+     }
+     for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+       roomlist[socketChannel].players[i].goldOnTable = 0;
+       roomlist[socketChannel].players[i].won =true;
+     }
+
+     roomlist[socketChannel].currentRound = "Game Completed";
+     io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
+     io.in(socketChannel).emit('OnDraw', roomlist[socketChannel].players[i]);
+
+     //Hitting round should not start as multiple players have blackjack in blackjack round
+   }
+   else {
+     if(roomlist[socketChannel].currentRound === "Blackjack Round")
+     {
+       roomlist[socketChannel].rounds[1].completed = true;
+       roomlist[socketChannel].currentRound = "Hitting Round";
+
+       for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+       {
+         if(roomlist[socketChannel].players[i].insuranceAccepted){
+          roomlist[socketChannel].total_bet += roomlist[socketChannel].players[i].insuredAmount;
+          roomlist[socketChannel].players[i].insuranceAccepted = false;
+          roomlist[socketChannel].players[i].insuredAmount = 0;
+          io.in(socketChannel).emit('TotalBetUpdated', roomlist[socketChannel].total_bet);
+         }
+         roomlist[socketChannel].players[i].currentRaiseInLimit = roomlist[socketChannel].players[i].maxRaiseInLimit = roomlist[socketChannel].rounds[2].raiseLimit;
+       }
+
+       roomlist[socketChannel].turnIndex =  roomlist[socketChannel].turnIndex + 1 >= roomlist[socketChannel].players.length ? 0 : roomlist[socketChannel].turnIndex + 1;
+       let user = roomlist[socketChannel].players[roomlist[socketChannel].turnIndex];
+       console.log(user.currentRaiseInLimit);
+
+       switchTurn(user.id,socketChannel);
+       console.log("Hitting Round Started.");
+     }
+   }
+}
+
+function checkMaxRaiseLimit(id, socketChannel)
+{
+  for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+  {
+    let tempVar = 0;
+    if(roomlist[socketChannel].players[i].id != id)
+    {
+      if(tempVar < roomlist[socketChannel].players[i].gold + roomlist[socketChannel].players[i].goldOnTable)
+      {
+        tempVar = roomlist[socketChannel].players[i].gold + roomlist[socketChannel].players[i].goldOnTable;
+
+        let data = {
+          id: id,
+          raiseLimit: tempVar
+        }
+
+        io.in(socketChannel).emit('checkMaxRaiseLimit', data);
+        return tempVar;
+      }
+    }
+  }
+}
