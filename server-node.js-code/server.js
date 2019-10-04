@@ -597,3 +597,158 @@ function checkMaxRaiseLimit(id, socketChannel)
     }
   }
 }
+
+//Deducting casinos share
+function deductCasinoShare(socketChannel)
+{
+	let casinoShare= (roomlist[socketChannel].total_bet/ (casinoSharePercent * 100) );
+	roomlist[socketChannel].total_bet -= casinoShare;
+	io.in(socketChannel).emit('ShowCasinoShare', casinoShare);
+}
+//checking winner after split case
+function checkWinnerAfterSplitting(socketChannel)
+{
+  console.log("Player array is ");
+  console.log(roomlist[socketChannel].players);
+  for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+  {
+    if(roomlist[socketChannel].players[i].hands.length > 0){
+      console.log("hand is" );
+      console.log( roomlist[socketChannel].players[i].hands[0]);
+
+    }
+  }
+  // return;
+  for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+  {
+      if(roomlist[socketChannel].players[i].hands.length > 0){
+        console.log("hand length > 0");
+        deductCasinoShare(socketChannel);
+
+        checkIndividualWinnerAfterSplitting(socketChannel);
+        roomlist[socketChannel].players[i].points = roomlist[socketChannel].players[i].hands[0].points ;
+      //   for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+      //     roomlist[socketChannel].players[i].goldOnTable = 0;
+      // }
+      // for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+      // //io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
+
+      // }
+      roomlist[socketChannel].players[i].points = roomlist[socketChannel].players[i].hands[0].points ;
+      let tempUser=_.findWhere(roomlist[socketChannel].players, {id : roomlist[socketChannel].players[i]});
+      setTimeout(function() {
+
+        checkIndividualWinnerAfterSplitting(socketChannel);
+        io.in(socketChannel).emit('RevealSplitCards', tempUser);
+        for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+            roomlist[socketChannel].players[i].goldOnTable = 0;
+        }
+        for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+        io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
+        }
+      }, 3000);
+   }
+  }
+}
+
+function checkIndividualWinnerAfterSplitting(socketChannel)
+{
+  let winner = [];
+  let bustPlayers = [];
+  let temp=[] ;
+  let totalWinners = 0;
+  let tempPoints = 0;
+
+  for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+  {
+   if(roomlist[socketChannel].players[i].points > 21){
+      bustPlayers.push(roomlist[socketChannel].players[i]);
+   }
+   else {
+     if(winner.length > 0){
+       winner[winner.length]=roomlist[socketChannel].players[i];
+       for(var j = winner.length-1; j > 0 ; j--){
+          if(winner[j].points > winner[j-1].points){
+             temp[tempPoints] = winner[j];
+             winner[j]=winner[j-1];
+             winner[j-1]=temp[tempPoints];
+          }
+       }
+     }else if(winner.length <= 0){
+        winner.push(roomlist[socketChannel].players[i]);
+     }
+   }
+
+  }
+  if(bustPlayers.length >0){
+       /*for(var i = 0; i < bustPlayers.length; i++){
+    winner[winner.length]=bustPlayers[i];
+   }*/
+  }
+  if(winner.length == 0 && bustPlayers.length == roomlist[socketChannel].players.length){
+    //all busted players so return them their money
+    //return half the money to them as split
+    console.log("All Player Busted this round");
+    for(var i = 0; i < bustPlayers.length; i++){
+    //  if(!bustPlayers[i].isBusted)
+    //  {
+       bustPlayers[i].isBusted = true;
+       bustPlayers[i].gold += bustPlayers[i].goldOnTable/2;
+       bustPlayers[i].goldOnTable=bustPlayers[i].goldOnTable/2;
+       io.in(socketChannel).emit('OnSplitDraw', winner[0]);
+    //}
+   }
+  }else{
+    if(winner.length > 0)  {
+     console.log("final winner array is ");
+     console.log(winner);
+       tempPoints = winner[0].points;
+     console.log("tempPoints are " + tempPoints);
+    }
+   for(var i = 0; i < winner.length; i++){
+     if(winner[i].points == tempPoints){
+       totalWinners++;
+     }
+   }
+    if(totalWinners == 1){
+      //if(!winner[0].won){
+        //giving bet money to the winning player
+        winner[0].won = true;
+        console.log("one winner of this round " + winner[0].name);
+        // deductCasinoShare(socketChannel);
+        winner[0].gold +=roomlist[socketChannel].total_bet/2;
+        io.in(socketChannel).emit('OnSplitWin', winner[0]);
+
+        roomlist[socketChannel].lastWinnerID = winner[0].id;
+
+     // }
+    }
+    else{
+      if(totalWinners == roomlist[socketChannel].players.length ){
+        //Draw scenario
+        console.log("this round is draw");
+        for(var i = 0; i < totalWinners; i++){
+          //if(!winner[i].won)
+          {
+             winner[i].gold += roomlist[socketChannel].total_bet / (totalWinners*2);
+             winner[i].won = true;
+             io.in(socketChannel).emit('OnSplitDraw');
+          }
+        }
+      }else{
+        //giving bet money to the multiple winning players
+        console.log("multiple bndey jeet gye");
+        //  deductCasinoShare(socketChannel);
+         for(var i = 0; i < totalWinners; i++){
+        //   if(!winner[i].won)
+          {
+            winner[i].gold += roomlist[socketChannel].total_bet / (totalWinners*2);
+            winner[i].won = true;
+            io.in(socketChannel).emit('OnSplitWin', winner[i]);
+          }
+         }
+      }
+    }
+  }
+
+}
