@@ -752,3 +752,152 @@ function checkIndividualWinnerAfterSplitting(socketChannel)
   }
 
 }
+//checking for winner at the end of hitting round
+
+function checkWinnerAfterHitting(socketChannel)
+{
+   let winner = [];
+   let bustPlayers = [];
+   let temp=[] ;
+   let totalWinners = 0;
+   let tempPoints = 0;
+
+   for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+   {
+    if(roomlist[socketChannel].players[i].points > 21){
+       //winner[winner.length]=roomlist[socketChannel].players[i];
+       bustPlayers.push(roomlist[socketChannel].players[i]);
+    }
+    else {
+      if(winner.length > 0){
+        winner[winner.length]=roomlist[socketChannel].players[i];
+        //winner.push(roomlist[socketChannel].players[i]);
+        for(var j = winner.length-1; j > 0 ; j--){
+           if(winner[j].points > winner[j-1].points){
+              temp[tempPoints] = winner[j];
+              winner[j]=winner[j-1];
+              winner[j-1]=temp[tempPoints];
+           }
+        }
+      }else if(winner.length <= 0){
+         winner.push(roomlist[socketChannel].players[i]);
+      }
+    }
+
+   }
+   if(bustPlayers.length >0){
+        /*for(var i = 0; i < bustPlayers.length; i++){
+     winner[winner.length]=bustPlayers[i];
+    }*/
+   }
+   if(winner.length == 0 && bustPlayers.length == roomlist[socketChannel].players.length){
+     //all busted players so return them their money
+     console.log("All Player Busted");
+     for(var i = 0; i < bustPlayers.length; i++){
+      if(!bustPlayers[i].isBusted)
+      {
+        bustPlayers[i].isBusted = true;
+        bustPlayers[i].gold +=roomlist[socketChannel].total_bet /roomlist[socketChannel].players.length;
+        bustPlayers[i].goldOnTable=0;
+        io.in(socketChannel).emit('OnDraw', winner[0]);
+      }
+  }
+   }else{
+     if(winner.length > 0)  {
+      console.log("final winner array is ");
+      console.log(winner);
+        tempPoints = winner[0].points;
+      console.log("tempPoints are " + tempPoints);
+     }
+    for(var i = 0; i < winner.length; i++){
+      if(winner[i].points == tempPoints){
+        totalWinners++;
+      }
+    }
+  if(totalWinners == 1){
+    if(!winner[0].won){
+      //giving bet money to the winning player
+      winner[0].won = true;
+      console.log("one winner " + winner[0].name);
+      deductCasinoShare(socketChannel);
+      winner[0].gold +=roomlist[socketChannel].total_bet;
+      io.in(socketChannel).emit('OnWin', winner[0]);
+
+      roomlist[socketChannel].lastWinnerID = winner[0].id;
+
+    }
+  }
+  else{
+    if(totalWinners == roomlist[socketChannel].players.length ){
+      //Draw scenario
+      for(var i = 0; i < totalWinners; i++){
+        if(!winner[i].won)
+        {
+          winner[i].gold += roomlist[socketChannel].total_bet / totalWinners;
+          winner[i].won = true;
+          io.in(socketChannel).emit('OnDraw');
+        }
+      }
+    }else{
+    //giving bet money to the multiple winning players
+    deductCasinoShare(socketChannel);
+    for(var i = 0; i < totalWinners; i++){
+      if(!winner[i].won)
+      {
+        winner[i].gold += roomlist[socketChannel].total_bet / totalWinners;
+        winner[i].won = true;
+        io.in(socketChannel).emit('OnWin', winner[i]);
+      }
+    }
+  }
+  }
+   }
+ for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+      roomlist[socketChannel].players[i].goldOnTable = 0;
+  }
+for(var i = 0; i < roomlist[socketChannel].players.length; i++){
+  io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
+}
+}
+
+function analyze(players)
+{
+ let winner = [];
+ let totalWinners=1;
+ winner[0]=players[0];
+
+ for(var i = 1; i <= players.length-1; i++)
+ {
+   //single winner case
+   if(i > 0)
+   {
+     if(winner[0].points < players[i].points)
+     {
+     // remove all prev indexes and insert on 0th
+     winner = [];
+     let index = i;
+     winner[0]=players[index];
+     totalWinners=1;
+    }else if(winner[0].points == players[i].points){
+     //draw case
+     winner[totalWinners]=players[i];
+     totalWinners++;
+    }
+  }
+ }
+
+ if(totalWinners > 1)
+ {
+   console.log("stalemate");
+ }else if(totalWinners == 1)
+ {
+   console.log(winner[0].name + " is winner with points: " +winner[0].points);
+ }
+}
+
+function checkSplit(socketChannel)
+{
+let val = roomlist[socketChannel].players.every((val, i, arr) => val.split === true);
+console.log(val);
+return val;
+}
