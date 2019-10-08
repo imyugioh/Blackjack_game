@@ -901,3 +901,127 @@ let val = roomlist[socketChannel].players.every((val, i, arr) => val.split === t
 console.log(val);
 return val;
 }
+
+function splitNone(socketChannel)
+{
+  let val = roomlist[socketChannel].players.every((val, i, arr) => val.split === false);
+  console.log(val);
+  return val;
+}
+
+function updateUserInDatabase(user)
+{
+  usermodel.findOne({_id:user.refid}, function(err, res) {
+    if (err)
+      return console.log(err);
+    if (!res) {
+      socket.emit('error_message', {msg: "Incorrect User id", errcode : 2});
+      return;
+    }
+    //incorrect credit data
+    //end
+    let newGold_delta = user.gold;
+    let newcredits_delta = user.credits;
+    usermodel.findOneAndUpdate({_id:info.refid}, {gold: newGold_delta}, {credits: crypto.encrypt(newcredits_delta)}, {upsert:true}, function(err, res){
+    if (err) return console.log(err);
+
+    console.log(user.name +" updated in the database.");
+    // socket.emit('OnUserUpdated', user);
+    io.in(socket.channel).emit('OnUserUpdated', user);
+
+      ///res.credits
+    });
+  });
+}
+
+//end functions
+io.on('connection', function(socket){
+
+  console.log('A player connected. id :', socket.id);
+
+  socket.on('checkMaxRaiseLimit', function(data){
+    checkMaxRaiseLimit(data, socket.channel);
+  });
+
+	socket.emit('playerID', socket.id);
+
+  socket.on('OnRestartRequested', function(data)
+  {
+    let user = _.findWhere(roomlist[socket.channel].players, {id : socket.id});
+
+    if(user)
+    {
+      user.restartRequested = true;
+
+      for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+      {
+        if(roomlist[socket.channel].players[i].id != user.id && !roomlist[socket.channel].players[i].restartRequested)
+        {
+          let data = {
+            id: roomlist[socket.channel].players[i].id,
+            opponentName: user.name
+          }
+
+          io.in(socket.channel).emit('OnRematchRequested', data);
+        }
+      }
+    }
+
+    if(roomlist[socket.channel].players.every((val, i, arr) => val.restartRequested === true))
+    {
+      io.in(socket.channel).emit('OnRestartRequested');
+    }
+  });
+
+  socket.on('OnRestart', function(data){
+    //DO STUFF HERE
+    for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+    {
+      if(roomlist[socket.channel].players[i].id === data)
+      {
+        roomlist[socket.channel].tempPlayerId = "";
+        roomlist[socket.channel].players[i].lastCardID = "";
+        roomlist[socket.channel].players[i].lastCardPoints = "";
+        roomlist[socket.channel].players[i].split = false;
+        roomlist[socket.channel].players[i].splitPoints = 0;
+        //roomlist[socket.channel].hands = [];
+        roomlist[socket.channel].players[i].hands.splice(0,roomlist[socket.channel].players[i].hands.length);
+        roomlist[socket.channel].players[i].DoubleDown = false;
+        roomlist[socket.channel].players[i].allIn = false;
+        roomlist[socket.channel].players[i].isReady = false;
+        roomlist[socket.channel].players[i].betAccepted = false;
+        roomlist[socket.channel].players[i].goldOnTable = 0;
+        roomlist[socket.channel].players[i].previousGoldOnTable = 0;
+        //roomlist[socket.channel].players[i].gold = 0;
+        roomlist[socket.channel].players[i].points = 0;
+        roomlist[socket.channel].players[i].insuredAmount = 0;
+        roomlist[socket.channel].players[i].insurance = false;
+        roomlist[socket.channel].players[i].isBusted = false;
+        roomlist[socket.channel].players[i].won = false;
+        roomlist[socket.channel].players[i].standTaken = false;
+        roomlist[socket.channel].players[i].forfeited = false;
+        roomlist[socket.channel].players[i].hasChecked = false;
+        roomlist[socket.channel].players[i].currentRaiseInLimit = 0;
+        roomlist[socket.channel].players[i].maxRaiseInLimit = 0;
+
+        console.log("All clear:");
+        io.in(socket.channel).emit('OnStakeUpdated', roomlist[socket.channel].players[i]);
+        // console.log(roomlist[socket.channel].players[i]);
+      }
+    }
+
+      if(roomlist[socket.channel].players.every((val, i, arr) => val.restartRequested === true))
+      {
+        resetRoom(socket.channel);
+        let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+        if(user)
+        {
+          console.log(roomlist[socket.channel].players.length+" accessed by: "+user.name);
+          user.isReady = false;
+          setTimeout(function() {
+              io.in(socket.channel).emit('SetReady', user);
+              console.log('Blah blah blah blah extra-blah');
+            }, 500 * i);
+        }
+      }
+    });
