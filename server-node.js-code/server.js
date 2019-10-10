@@ -1025,3 +1025,203 @@ io.on('connection', function(socket){
         }
       }
     });
+
+    socket.on('verifyuser', function(data){
+      usermodel.findOne({username: data.name, password: data.password}).then(res=> {
+        if (res){
+          console.log(loggedUsers);
+          console.log(res);
+          let user = _.findWhere(loggedUsers, {username: data.name});
+
+          if(!user)
+          {
+            let resObj = {
+              id: socket.id,
+              username: res.username,
+              email: res.email
+            }
+            loggedUsers.push(resObj);
+            console.log(loggedUsers);
+            socket.emit('OnUserVerified', {id: socket.id, refid: res._id, name: res.username, email: res.email, gold: res.gold, credits: parseFloat(crypto.decrypt(res.credits)).toFixed(2), gender: res.gender === 1 ? "male" : "female"});
+          }else {
+            socket.emit('error_message', {msg: "User: "+res.username +" is currently active in another game session, please close that session and try again.", errcode: 6});
+          }
+          // if(checkFurther)
+          // {
+          //
+          //   if(!user)
+          //   {
+          //     socket.emit('OnUserVerified', {id: socket.id, refid: res._id, name: res.username, email: res.email, gold: res.gold, credits: parseFloat(crypto.decrypt(res.credits)).toFixed(2), gender: res.gender === 1 ? "male" : "female"});
+          //   }else {
+          //     socket.emit('error_message', {msg: "User: "+res.username +" is currently active in another game session, please close that session and try again.", errcode: 6});
+          //   }
+          // }else {
+          //   socket.emit('OnUserVerified', {id: socket.id, refid: res._id, name: res.username, email: res.email, gold: res.gold, credits: parseFloat(crypto.decrypt(res.credits)).toFixed(2), gender: res.gender === 1 ? "male" : "female"});
+          // }
+        }
+        else {
+          socket.emit('OnLoginFailed', {reason: "Invalid User name or password", errcode: 4});
+          console.log("Invalid User name or password");
+        }
+      }).catch(err => {
+        socket.emit('OnLoginFailed', {reason: "User Already Exists", errcode: 5});
+        console.error(err);
+      });
+    });
+
+  socket.on('updatecredits', function(info){
+    console.log(info);
+      usermodel.findOne({_id:info.refid}, function(err, res) {
+        if (err)
+          return console.log(err);
+        if (!res) {
+          console.log("Incorrect user id.");
+          socket.emit('error_message', {msg: "Incorrect User id", errcode : 2});
+          return;
+        }
+        //incorrect credit data
+        //end
+
+        let newGold_delta = res.gold - info.priceGold;
+
+        let newcredits_delta = parseFloat(crypto.decrypt(res.credits)) + info.credits_delta;
+        usermodel.findOneAndUpdate({_id:info.refid}, {gold: newGold_delta >= 0 ? newGold_delta : res.gold, credits: crypto.encrypt(newcredits_delta.toString())}, {upsert:true}, function(err, res){
+          if (err) return console.log(err);
+          let user = _.findWhere(roomlist[socket.channel].players, {id: info.id});
+
+          if(user)
+          {
+            user.gold = res.gold;
+            user.credits = parseFloat(crypto.decrypt(res.credits)).toFixed(2);
+
+            // io.in(socket.channel).emit('OnUserUpdated', user);
+            io.in(socket.channel).emit('OnUserUpdated', user);
+
+          }
+          ///res.credits
+        });
+      });
+    });
+
+  socket.on('updateGold', function(info){
+    console.log(info);
+
+        usermodel.findOne({_id:info.refid}, function(err, res) {
+          if (err)
+            return console.log(err);
+          if (!res) {
+            console.log("Incorrect User id");
+            socket.emit('error_message', {msg: "Incorrect User id", errcode : 2});
+            return;
+          }
+          //incorrect credit data
+          //end
+          let credits = parseFloat(crypto.decrypt(res.credits));
+          let newcredits_delta = credits - info.priceCredits;
+
+          let newGold_delta = res.gold + info.gold_delta;
+          usermodel.findOneAndUpdate({_id:info.refid}, {gold: newGold_delta, credits: newcredits_delta >= 0 ? crypto.encrypt(newcredits_delta.toString()) : res.credits}, {upsert:true}, function(err, res){
+            if (err) return console.log(err);
+            let user = _.findWhere(roomlist[socket.channel].players, {id: info.id});
+
+            if(user)
+            {
+              user.gold = res.gold;
+              user.credits = parseFloat(crypto.decrypt(res.credits)).toFixed(2);
+              io.in(socket.channel).emit('OnUserUpdated', user);
+
+              // io.in(socket.channel).emit('OnUserUpdated', user);
+            }
+            ///res.credits
+          });
+        });
+    });
+
+  socket.on('register', function(info){
+      let defaultCoin = 50;
+      let newUser = new usermodel({
+        username:info.username,
+        password:info.password,
+        email: info.email,
+        gender: info.gender,
+        credits: crypto.encrypt(defaultCoin.toString()),
+        gold: 25000,
+        bitcoin_id: info.bitcoin + socket.id
+      });
+
+      newUser.save().then(res => {
+
+        let user = {
+          id: res.id,
+          userid: socket.id,
+          username: res.username,
+          password: res.password,
+          email: res.email,
+          gender: res.gender,
+          credits: defaultCoin,
+          bitcoin_id: res.bitcoin_id
+        }
+        socket.emit('OnRegistrationSuccessful', user);
+        console.log("User successfully saved. User name:", res.username);
+      }).catch(err => {
+        console.log(err);
+        socket.emit('error_message', {msg : "User Already Exists or error occured", errcode : 1});
+        console.error("User Already Exists or error occured");
+      })
+    });
+
+  socket.on('login', function(data){
+    //check users from database
+    //end check
+    //if user exist
+    let user = {
+    id:socket.id,
+    refid: data.refid,
+    gender: data.gender,
+		goldOnTable:0,
+    previousGoldOnTable: 0,
+		gold: data.gold,
+    credits: data.credits,
+		playerIndex: 0,
+		points: 0,
+		insuredAmount: 0,
+		insurance: false,
+    name: data.name,
+    roomid: -1,
+		isOccupied: false,
+		isReady: false,
+		betAccepted: false,
+		isBusted: false,
+		won: false,
+    standTaken: false,
+    forfeited: false,
+    hasChecked: false,
+    currentRaiseInLimit: 0,
+    maxRaiseInLimit: 0,
+    restartRequested : false,
+    allIn: false,
+    DoubleDown: false,
+    split: false,
+    splitPoints: 0,
+    hands: [],
+    lastCardPoints : 0,
+    lastCardID : ""
+    }
+    // GenerateRoom();
+    allUsers.push(user);
+    console.log(data.name, 'has connected to blackjack');
+    try{
+      socket.emit('roomlist', getRoomList());
+    }
+    catch(e)
+    {
+      console.log("//////////Begin//////////")
+      console.log(e);
+      console.log("/////////End//////////");
+    }
+    finally
+    {
+      console.log("Should have no errors.");
+    }
+    console.log("Looks okay to me.");
+  });
