@@ -1225,3 +1225,171 @@ io.on('connection', function(socket){
     }
     console.log("Looks okay to me.");
   });
+
+  socket.on('playerCreated', function(data)
+  {
+	roomlist[socket.channel].players[data.playerIndex].isOccupied = data.isOccupied;
+	roomlist[socket.channel].players[data.playerIndex].gold = data.gold;
+	roomlist[socket.channel].players[data.playerIndex].goldOnTable = data.goldOnTable;
+	roomlist[socket.channel].players[data.playerIndex].playerIndex = data.playerIndex;
+  });
+
+  socket.on('UpdateStake', function(data) {
+	   console.log("updateStake request received");
+	  // console.log(roomlist[socket.channel].players);
+
+    let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+    if(user)
+    {
+      user.gold = data.gold;
+      updateTotalBet(data.goldOnTable - user.goldOnTable,  socket.channel );
+      user.goldOnTable = data.goldOnTable;
+
+      console.log("updating user data against ID: "+data.id);
+			console.log(user);
+
+			io.in(socket.channel).emit('OnStakeUpdated', user);
+    }
+  });
+
+  socket.on('ClearStake', function(id){
+    let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+    if(user){
+      user.gold += (user.previousGoldOnTable - user.goldOnTable) > 0 ? (user.previousGoldOnTable - user.goldOnTable) : (user.goldOnTable - user.previousGoldOnTable);
+      user.goldOnTable = user.previousGoldOnTable;
+      io.in(socket.channel).emit('OnStakeUpdated', user);
+    }
+  });
+
+  socket.on('join_room', function(room){
+    console.log(room.id +" Room ID");
+
+    //check that rooms are full
+    //
+    let user = _.findWhere(allUsers, {id:socket.id});
+    if (!user) {
+      //unexpected user
+      //alert
+      return;
+    }
+
+    if (checkRoomFull(roomlist[room.id])) {
+      //alert this rooom is full
+      console.log(roomlist[room.id].players.length, 111);
+      socket.emit('error_message', {msg: `Room ${room.id} is Full.`, errcode: 0});
+      return;
+    }
+    else {
+      console.log(user);
+  	  user.roomid = room.id;
+
+      user.gold -= room.buy_in_limit;
+      // user.actualGold = user.gold;
+      // user.gold = room.buy_in_limit;
+
+      if(roomlist[room.id].customed && !roomlist[room.id].customTableCreated)
+      {
+        roomlist[room.id].buy_in_limit = room.buy_in_limit;
+        roomlist[room.id].raise_max = room.raise_max;
+        roomlist[room.id].raise_min = room.raise_min;
+        roomlist[room.id].customTableCreated = true;
+        console.log("Custom Table Created.");
+      }
+
+      roomlist[room.id].players.push(user);
+
+      //pushing the new user where it really belongs instead of sitting on ones face, it should be sitting next to it
+      roomlist[room.id].players.sort(function(a, b){return a.playerIndex - b.playerIndex});
+
+      socket.join(room.id);
+
+      socket.channel = room.id;
+
+      console.log(user.name, 'has joined room', room.id);
+      console.log("Current Round: "+roomlist[room.id].currentRound);
+
+      io.in(room.id).emit('userlist', roomlist[room.id].players); //broadcast users list of the room
+
+      io.emit('roomlist', getRoomList());
+
+      //io.emit('roomlist', roomlist); //broadcast room list of the room
+
+      socket.emit('OnRoomJoined', roomlist[socket.channel]);
+
+  	  socket.emit('initroom', room.id, roomlist[room.id]); //send room info to client
+
+      io.in(room.id).emit('statusinfo',`${user.name} has joined.`);
+
+      //Resets the game if it was already in progress and a player leaves and another player joins.
+      if(roomlist[room.id].currentRound != "initial" && roomlist[room.id].players.length > 1)
+      {
+        console.log("Proceeding towards game restoration.");
+        for(var i = 0; i < roomlist[room.id].players.length; i++)
+        {
+          console.log("Forced Reset Called against: " +roomlist[room.id].players[i].name);
+          let user = roomlist[room.id].players[i];
+          setTimeout(function(){
+            io.in(room.id).emit('OnForcedRestart', user);
+          }, 500 * i);
+        }
+      }
+    }
+  });
+
+	socket.on('isReady', function(data) {
+
+		if (!socket.channel)
+			return;
+
+		let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+
+		if(user)
+		{
+      console.log("in isReady callback, received from: " +user.name);
+      user.restartRequested = false;
+			if(user.isReady == false)
+			{
+				user.isReady = data.isReady;
+				// console.log(roomlist[socket.channel].players);
+				if(roomlist[socket.channel].players.every((val, i, arr) => val.isReady === true))
+				{
+          roomlist[socket.channel].maximum_bet = roomlist[socket.channel].total_bet = 0;
+					console.log("All players are ready.");
+
+					roomlist[socket.channel].turnIndex = 0;
+
+					let turnIndex = roomlist[socket.channel].turnIndex;
+
+          roomlist[socket.channel].currentRound = roomlist[socket.channel].rounds[0].round;
+          // roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+          let lastWinner = _.findWhere(roomlist[socket.channel].players, {id: roomlist[socket.channel].lastWinnerID});
+          if(lastWinner)
+          {
+            console.log(lastWinner.name +" had last won the table, switching turn to it.");
+            io.in(socket.channel).emit('OnBettingRoundStarted', lastWinner.id);
+            switchTurn(lastWinner.id, socket.channel);
+          }else {
+            let thisUser = roomlist[socket.channel].players[turnIndex];
+            io.in(socket.channel).emit('OnBettingRoundStarted', thisUser.id);
+            switchTurn(thisUser.id, socket.channel);
+          }
+				}
+			}
+		}
+	});
+
+	socket.on('OnStart', function(data){
+		if(!socket.channel)
+			return;
+
+		io.in(socket.channel).emit('OnStart', data);
+
+		// roomlist[socket.channel].turnIndex = 0;
+
+		let turnIndex = roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+    switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+	});
