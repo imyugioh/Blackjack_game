@@ -1947,3 +1947,89 @@ io.on('connection', function(socket){
       io.in(socket.channel).emit('OnCheck', user);
     }
   });
+
+  socket.on('OnForfeit', function(data)
+  {
+    let user = _.findWhere(roomlist[socket.channel].players, {id:data.id});
+    console.log(user.name+" has requested forfeit.");
+
+    if(user)
+    {
+      let someData = {
+        id : data.id,
+        name: user.name,
+        currentRound: roomlist[socket.channel].currentRound
+      }
+
+      switch (roomlist[socket.channel].currentRound) {
+        case "Betting Round":
+        {
+          if(user.goldOnTable > 0)
+          {
+             let totalBet = user.goldOnTable;
+             user.goldOnTable = 0;
+             io.in(socket.channel).emit('OnStakeUpdated', user);
+             user.forfeited = true;
+
+             let users = [];
+
+             for(var i = 0; i <roomlist[socket.channel].players.length; i++)
+             {
+               if(!roomlist[socket.channel].players[i].forfeited)
+               {
+                 users.push(roomlist[socket.channel].players[i]);
+               }
+             }
+
+             if(users.length === 1)
+             {
+               totalBet += users[0].goldOnTable;
+               users[0].gold += totalBet;
+               users[0].goldOnTable = 0;
+               io.in(socket.channel).emit('OnStakeUpdated', users[0]);
+               console.log("Winning pool of: " +totalBet+" added against: "+users[0].id+" with name: "+users[0].name);
+             }
+
+
+
+             // console.log(roomlist[socket.channel].players);
+          }
+        }
+        break;
+        default:
+        if(user.goldOnTable > 0)
+        {
+           let totalBet = user.goldOnTable / 2;
+           user.goldOnTable = 0;
+           user.gold += totalBet;
+           io.in(socket.channel).emit('OnStakeUpdated', user);
+           user.forfeited = true;
+
+           let users = [];
+
+           for(var i = 0; i <roomlist[socket.channel].players.length; i++)
+           {
+             if(!roomlist[socket.channel].players[i].forfeited)
+             {
+               users.push(roomlist[socket.channel].players[i]);
+             }
+           }
+
+           if(users.length === 1)
+           {
+             totalBet += users[0].goldOnTable;
+             users[0].gold += totalBet;
+             users[0].goldOnTable = 0;
+             // io.in('OnWin', users[0]);
+             io.in(socket.channel).emit('OnStakeUpdated', users[0]);
+             console.log("Winning pool of: " +totalBet+" added against: "+users[0].id+" with name: "+users[0].name);
+           }
+
+           console.log(roomlist[socket.channel].players);
+        }
+      }
+
+      console.log(user.name+" is about to forfeit.");
+      io.in(socket.channel).emit('OnForfeit', someData);
+    }
+  });
