@@ -2148,4 +2148,137 @@ io.on('connection', function(socket){
         default:
       }
 		}
-	});
+  });
+  
+  socket.on('OnSplitPointsUpdated', function(data){
+    let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+    if(user)
+    {
+
+      let allStandTaken = roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true);
+      let splitAccepted = roomlist[socket.channel].players.every((val, i, arr) => val.split === true);
+
+      if(user.hands.length > 0)
+      {
+        user.hands[0].points = data.points;
+
+        if(user.hands[0].points >= 21 && !user.hands[0].standTaken)
+        {
+          console.log("//////////////////**PLAYERS DATA**////////////////////////////////");
+          console.log(roomlist[socket.channel].players);
+          console.log(user.name +" hand points exceeding or will exceed 21, setting its standTaken to true.");
+          console.log("////////////////////////**END**////////////////////////////////");
+          user.hands[0].standTaken = true;
+          io.in(socket.channel).emit('OnStand', user);
+
+          if(roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true) &&
+              roomlist[socket.channel].players.every((val, i, arr) => val.split === true))
+          {
+            console.log("Checking winner after splitting.");
+              checkWinnerAfterSplitting(socket.channel);
+          }else {
+            roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+            let turnIndex = roomlist[socket.channel].turnIndex;
+            console.log("switchint turn to : "+roomlist[socket.channel].players[turnIndex].name);
+            switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+          }
+        }
+      }
+
+      console.log(user.name+" splitPoints: "+data.points);
+      // switch (roomlist[socket.channel].currentRound) {
+      //   case "Hitting Round":
+      //   if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+      //   {
+      //       checkWinnerAfterHitting(socket.channel);
+      //   }else if(user.points > 21 && !user.standTaken) {
+      //     user.standTaken = true;
+      //     io.in(socket.channel).emit('OnStand', user);
+      //
+      //     if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+      //     {
+      //       checkWinnerAfterHitting(socket.channel);
+      //     }else {
+      //       if(roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length)
+      //       {
+      //         roomlist[socket.channel].turnIndex = 0;
+      //       }else {
+      //         roomlist[socket.channel].turnIndex += 1;
+      //       }
+      //
+      //       switchTurn(roomlist[socket.channel].players[roomlist[socket.channel].turnIndex].id, socket.channel);
+      //     }
+      //   }
+      //   break;
+      //   default:
+      // }
+    }
+  });
+
+  socket.on('toAll', function(data){ //get username, text, roomID
+    console.log(data);
+    let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+    if(user)
+    {
+      console.log("Recieved: " +data.message+" From: " +data.id);
+
+      let someData = {
+        id: socket.id,
+        channel: socket.channel,
+        sender: user.name,
+        message: data.message
+      };
+
+      io.in(socket.channel).emit('OnChatMessageReceived', saveChathistory(someData));
+    }
+    io.in(socket.channel).emit('toAll', saveRoomMessage(data));
+  });
+
+  socket.on('left_room', function(){ //normal disconnect
+
+    // let loggedUser = _.findWhere(loggedUsers, {id: socket.id});
+    //
+    // if(loggedUser)
+    // {
+    //   loggedUsers = _.without(loggedUsers, loggedUser);
+    // }
+
+    if (!socket.channel)
+      return;
+    let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+
+    if (user){
+
+      destroyTimer(socket.channel);
+
+      console.log(`${user.name} has left room ${socket.channel}`);
+
+      io.in(socket.channel).emit('OnUserLeftTable', {id: socket.id});
+
+      //remove user from room
+      roomlist[socket.channel].players = _.without(roomlist[socket.channel].players, user);
+      //reload info
+			io.in(socket.channel).emit('userlist', roomlist[socket.channel].players);
+
+      io.emit('roomlist', getRoomList());
+
+      //io.emit('roomlist', roomlist); //broadcast room list of the room
+
+      io.in(socket.channel).emit('statusinfo', `${user.name} has left.`);
+
+      if (roomlist[socket.channel].players.length == 0 && socket.channel > 5 && allUsers.length <= 36) {// remove after 7th room
+        console.log('delete');
+        resetRoom(socket.channel);
+        // roomlist.splice(socket.channel, 1);
+      }else if(roomlist[socket.channel].players.length == 1)
+      {
+        console.log("Requesting: " +roomlist[socket.channel].players[0].name+" to disable controls.");
+        io.in(socket.channel).emit('OnCeasePlaying', roomlist[socket.channel].players[0].id);
+      }
+
+      resetRoom(socket.channel);
+      socket.leave(socket.channel);
+      delete socket.channel;
+    }
+  });
