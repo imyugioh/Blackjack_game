@@ -2378,3 +2378,59 @@ io.on('connection', function(socket){
         console.log(user.name+" cannot accept the split Request, not enough gold to double the bet.");
       }
     }
+
+    //Region: If all players has accepted the split request
+    if(checkSplit(socket.channel))
+    {
+      let userWhoStartedSplit = _.findWhere(roomlist[socket.channel].players, {id: roomlist[socket.channel].tempPlayerId});
+      if(userWhoStartedSplit) {
+        let hand = {
+          points : userWhoStartedSplit.lastCardPoints,
+          isBusted: false,
+          standTaken: false,
+        }
+
+        let someData = {
+          id: userWhoStartedSplit.id,
+          cardID: userWhoStartedSplit.lastCardID
+        }
+
+        userWhoStartedSplit.hands.push(hand);
+        userWhoStartedSplit.points -= userWhoStartedSplit.lastCardPoints;
+        io.in(socket.channel).emit('OnSplitAccepted', someData);
+      }
+      // user.splitPoints += data.cardPoint;
+      console.log("Players have accepted the splitRequest.");
+    } else {
+      for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+      {
+        if(!roomlist[socket.channel].players[i].split)
+        {
+          let userWhoStartedSplit = _.findWhere(roomlist[socket.channel].players, {id: roomlist[socket.channel].tempPlayerId});
+          let someData = {
+              userA : userWhoStartedSplit,
+              userB : roomlist[socket.channel].players[i]
+          };
+
+          // let turnIndex = i;
+          // switchTurn(roomlist[socket.channel].players[i].id, socket.channel);
+          io.in(socket.channel).emit('OnSplitRequested', someData);
+          break;
+        }
+      }
+    }
+  });
+
+  socket.on('OnUpdateUserDatabase', function(data){
+    let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+    if(user)
+    {
+      updateUserInDatabase(user);
+    }
+  });
+});
+
+http.listen(port, function(){
+  initDefaultRooms(); //init default rooms
+  console.log('Server is running on Port ' + port);
+});
