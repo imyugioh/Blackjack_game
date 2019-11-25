@@ -469,17 +469,3 @@ function getRound(round, socketChannel){
   let roundData = _.findWhere(roomlist[socketChannel].rounds, {round:round});
   return roundData;
 }
-
-function distributeInsuranceAmount(socketChannel,winnerId){
-    for(var i = 0; i < roomlist[socketChannel].players.length; i++)
-    {
-      if(roomlist[socketChannel].players[i].id != winnerId && roomlist[socketChannel].players[i].insuranceAccepted){
-        console.log("blackjack insurance mil gyi name = " + roomlist[socketChannel].players[i].name);
-        roomlist[socketChannel].players[i].gold += (roomlist[socketChannel].players[i].insuredAmount + roomlist[socketChannel].players[i].goldOnTable)/2;
-        roomlist[socketChannel].total_bet -= roomlist[socketChannel].players[i].goldOnTable/4;
-        roomlist[socketChannel].players[i].goldOnTable =0;
-        roomlist[socketChannel].players[i].insuranceAccepted=false;
-        io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
-      }
-    }
-}
