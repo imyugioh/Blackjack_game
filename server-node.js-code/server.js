@@ -464,8 +464,3 @@ function destroyTimer(socketChannel)
     console.log("timer destroyed.");
   }
 }
-
-function getRound(round, socketChannel){
-  let roundData = _.findWhere(roomlist[socketChannel].rounds, {round:round});
-  return roundData;
-}
