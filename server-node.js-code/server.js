@@ -314,3 +314,16 @@ function GenerateRoom()
   if (count == roomlist.length)
     initRoom(roomlist.length, 0, 0, 0, true);
 }
+
+function checkRoomFull(room)
+{
+  if (room.players.length == room.max_player)
+    return true;
+  return false;
+}
+
+function updateTotalBet(data,socketChannel)
+{
+	roomlist[socketChannel].total_bet +=data ;
+	console.log("this bet is of "+data +" and Total bet on table is : " + roomlist[socketChannel].total_bet +" while maximum bet is: " +roomlist[socketChannel].maximum_bet);
+}
