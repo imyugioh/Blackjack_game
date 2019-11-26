@@ -454,13 +454,3 @@ function timerCompleted(socketChannel, playerId)
 {
   console.log("ITS WORKING!!!!");
 }
-
-function destroyTimer(socketChannel)
-{
-  if(roomlist[socketChannel].intervalID != null)
-  {
-    clearInterval(roomlist[socketChannel].intervalID);
-    roomlist[socketChannel].intervalID = null;
-    console.log("timer destroyed.");
-  }
-}
