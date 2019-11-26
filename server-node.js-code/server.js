@@ -443,14 +443,3 @@ function createTimer(timeOut, intervalFunction, endFunction, roomid)
         }
     }, 1000);
 }
-
-function timerStarted(value, socketChannel, playerID)
-{
-  value.id = playerID;
-  io.in(socketChannel).emit('OnTimerUpdated', value);
-}
-
-function timerCompleted(socketChannel, playerId)
-{
-  console.log("ITS WORKING!!!!");
-}
