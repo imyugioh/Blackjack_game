@@ -327,12 +327,3 @@ function updateTotalBet(data,socketChannel)
 	roomlist[socketChannel].total_bet +=data ;
 	console.log("this bet is of "+data +" and Total bet on table is : " + roomlist[socketChannel].total_bet +" while maximum bet is: " +roomlist[socketChannel].maximum_bet);
 }
-
-function updateBetAccepted(data,socketChannel)
-{
-	for(var i = 0; i < roomlist[socketChannel].players.length; i++) {
-		if(roomlist[socketChannel].players[i].id != data){
-		roomlist[socketChannel].players[i].betAccepted=false;
-		}
-	}
-}
