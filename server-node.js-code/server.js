@@ -412,34 +412,3 @@ function switchTurn(playerId, socketChannel)
     console.log("ITS WORKING!!!!");
   }, roomChannel);
 }
-
-function createTimer(timeOut, intervalFunction, endFunction, roomid)
-{
-  console.log("Create Timer function called.");
-  let seconds = timeOut;
-
-  if(roomlist[roomid].intervalID != null)
-  {
-    clearInterval(roomlist[roomid].intervalID);
-    roomlist[roomid].intervalID = null;
-  }
-
-  roomlist[roomid].intervalID = setInterval(function() {
-        seconds = seconds - 1 >= 0 ? seconds - 1 : 0;
-        let progress = seconds / timeOut;
-
-        let data = {
-          duration: seconds,
-          progress: progress,
-          totalTimeOut: timeOut
-        }
-
-        intervalFunction(data);
-        if(seconds <= 0)
-        {
-          clearInterval(roomlist[roomid].intervalID);
-          endFunction();
-          console.log("interval cleared.");
-        }
-    }, 1000);
-}
