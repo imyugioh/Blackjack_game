@@ -110,3 +110,143 @@ app.post('/tables/add/', async function(req, res){
     res.status(400).json({success:false});
   });
 });
+
+//define variables
+
+// let players = [];  //real game players
+
+// var initPlayer = function(id, name, money, roomID) {
+//     this.id = id;
+//     this.name = name;
+//     this.money = money;
+//     this.betMoney = 0;
+//     this.totalScore = 0;
+//     this.hand = [];
+//     this.roomID = roomID;
+// }
+
+let roomlist = [];
+let allUsers = [];
+let loggedUsers = [];
+var MAX_PLAYER = 2;
+var MIN_PLAYER = 2;
+var maxBet=0;
+var casinoSharePercent=1;
+var customTableCreated = false;
+
+//define functions
+
+function saveRoomMessage(data)
+{
+  //save to database
+  console.log("Doing something creepy with data.");
+  return `${data.name} : ${data.text}`
+}
+
+function getRoomList()
+{
+  let trimmedRoomList = [];
+
+  for(var i = 0; i < roomlist.length; i++)
+  {
+    let room = {
+      name: roomlist[i].name,
+      raise_max: roomlist[i].raise_max,
+      raise_min: roomlist[i].raise_min,
+      buy_in_limit: roomlist[i].buy_in_limit,
+      customTableCreated: roomlist[i].customTableCreated,
+      currentPlayerCount: roomlist[i].players.length,
+      max_player: roomlist[i].max_player,
+      customed : roomlist[i].customed,
+    };
+
+    trimmedRoomList.push(room);
+  }
+
+  return JSON.stringify(trimmedRoomList);
+}
+
+function resetRoom(roomId)
+{
+  let room = roomlist[roomId];
+  console.log("Reset Room function called.");
+  if(room)
+  {
+    room.total_bet = 0;
+    room.maximum_bet = 0;
+    room.prev_maximum_bet = 0;
+    room.turnIndex = 0;
+    room.previousRound = "";
+    room.currentRound = "intitial";
+    room.hitBlackjack = false;
+    room.tempPlayerId = "";
+    room.hitBlackjack =false;
+
+    if(room.customed && room.customTableCreated)
+    {
+      room.customTableCreated = false;
+      console.log("Custom Room Cleared.");
+    }
+
+    for(var i = 0; i < room.rounds.length; i++)
+    {
+      console.log(room.rounds[i].round +" reset.");
+      room.rounds[i].completed = false;
+    }
+    console.log("Room refreshed.");
+  }
+}
+
+function initRoom(id, name, buy_in_limit, raise_min, raise_max, customed, maxplayer, minplayer)
+{
+  roomlist[id] = {};
+  roomlist[id].name = name;
+  roomlist[id].tempPlayerId = "";
+  roomlist[id].lastWinnerID = "";
+  roomlist[id].buy_in_limit = buy_in_limit;
+  roomlist[id].raise_min = raise_min;
+  roomlist[id].raise_max = raise_max;
+  roomlist[id].customed = customed;
+  roomlist[id].customTableCreated = false;
+  roomlist[id].max_player = maxplayer;
+  roomlist[id].min_player = minplayer;
+  roomlist[id].total_bet  = 0; // to be reset at start of every game
+  roomlist[id].maximum_bet = 0; //maximum bet of this game by some player
+  roomlist[id].prev_maximum_bet = 0;
+  roomlist[id].players = [];
+  roomlist[id].turnIndex = 0;
+  roomlist[id].previousRound = "";
+  roomlist[id].currentRound = "initial";
+  roomlist[id].hitBlackjack = false;
+  roomlist[id].intervalID = null;
+  roomlist[id].rounds = [{
+	  round: "Betting Round",
+	  timeOut: 30,
+	  completed: false,
+    raiseLimit: "unlimited"
+  },
+  {
+	 round: "Blackjack Round",
+	 timeOut: 45,
+	 completed: false,
+   raiseLimit: 1
+  },
+  {
+	  round: "Hitting Round",
+	  timeOut: 15,
+	  completed: false,
+    raiseLimit: "unlimited"
+  },
+  {
+    round: "Hitting Round Completion",
+    timeOut: 15,
+    completed: false,
+    raiseLimit: "unlimited"
+  },
+  {
+    round: "Game Completed",
+    timeOut: 15,
+    completed: false,
+    raiseLimit: "unlimited"
+  }];
+}
