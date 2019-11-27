@@ -294,3 +294,29 @@ function initDefaultRooms()
   });
   //end
 }
+function saveChathistory(info) {
+  let newchat = new historymodel({channel: info.channel, from: info.sender, message: info.message});
+  newchat.save().then(function(res) {
+    console.log(res);
+  });
+  return info;
+}
+
+function GenerateRoom()
+{
+  var count = 0;
+  for (var i = 0; i < roomlist.length;i++)
+  {
+    if (roomlist[i].players.length == roomlist[i].max_player)
+      count++;
+  }
+  if (count == roomlist.length)
+    initRoom(roomlist.length, 0, 0, 0, true);
+}
+
+function checkRoomFull(room)
+{
+  if (room.players.length == room.max_player)
+    return true;
+  return false;
+}
