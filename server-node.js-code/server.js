@@ -250,3 +250,47 @@ function initRoom(id, name, buy_in_limit, raise_min, raise_max, customed, maxpla
     raiseLimit: "unlimited"
   }];
 }
+
+function initDefaultRooms()
+{
+  // createTimer(10, function(value){
+  //   console.log(value +" Tick Tock");
+  // },
+  // function(){
+  //   console.log("ITS WORKING!!!!");
+  // });
+
+  console.log("Rooms initialized.");
+  //for the test
+  //save to database
+  tablemodel.countDocuments(function(err, res) {
+    if (err) return console.log(err);
+    if (!res) {
+      initRoom(0, "Room 1", 500, 20, 100, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(1, "Room 2", 1000, 50, 300, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(2, "Room 3", 1500, 50, 400, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(3, "Room 4", 700, 10, 50, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(4, "Room 5", 5000, 500, 1200, false, MAX_PLAYER, MIN_PLAYER);
+      initRoom(5, "Room 6", 0, 0, 0, true, MAX_PLAYER, MIN_PLAYER);
+
+      tablemodel.insertMany([{table_name: "Room 1", buyin_limit: 500, raise_min: 20, raise_max: 100, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 2", buyin_limit: 1000, raise_min: 50, raise_max: 300, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 3", buyin_limit: 1500, raise_min: 50, raise_max: 400, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 4", buyin_limit: 700, raise_min: 10, raise_max: 50, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 5", buyin_limit: 5000, raise_min: 500, raise_max: 1200, customed: false, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER},
+      {table_name: "Room 6", buyin_limit: 0, raise_min: 0, raise_max: 0, customed: true, Max_player: MAX_PLAYER, Min_player: MIN_PLAYER}],
+      {ordered: true}, function(err, res){
+        if (err) return console.log(err);
+        console.log("Table Created");
+      });
+    } else {
+      tablemodel.find({}, function(err, res){
+        for(var i = 0;i < res.length;i ++) {
+          initRoom(i, res[i].table_name, res[i].buyin_limit, res[i].raise_min, res[i].raise_max, res[i].customed, res[i].Max_player, res[i].Min_player);
+        }
+      })
+      console.log('Tables already exist');
+    }
+  });
+  //end
+}
