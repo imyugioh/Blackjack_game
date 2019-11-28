@@ -320,3 +320,94 @@ function checkRoomFull(room)
     return true;
   return false;
 }
+
+function updateTotalBet(data,socketChannel)
+{
+	roomlist[socketChannel].total_bet +=data ;
+	console.log("this bet is of "+data +" and Total bet on table is : " + roomlist[socketChannel].total_bet +" while maximum bet is: " +roomlist[socketChannel].maximum_bet);
+}
+
+function updateBetAccepted(data,socketChannel)
+{
+	for(var i = 0; i < roomlist[socketChannel].players.length; i++) {
+		if(roomlist[socketChannel].players[i].id != data){
+		roomlist[socketChannel].players[i].betAccepted=false;
+		}
+	}
+}
+
+function switchTurn(playerId, socketChannel)
+{
+  var user = _.findWhere(roomlist[socketChannel].players, {id:playerId});
+  var someData = {
+      id : playerId,
+      betAccepted : user.betAccepted,
+      currentRound : roomlist[socketChannel].currentRound
+  };
+
+  var playerIdNum = playerId;
+  var roomChannel = socketChannel;
+
+  io.in(roomChannel).emit('switchTurn', someData);
+  console.log(someData.id +" Turn!");
+
+  createTimer(30, function(retValue){
+    timerStarted(retValue, roomChannel, playerIdNum)
+  }, function(){
+    switch (roomlist[roomChannel].currentRound) {
+      case "Betting Round":
+
+        // switch (roomlist[socketChannel].previousRound) {
+        //   case "Blackjack Round":
+        //   console.log(user.name+" not responded in blackjack round => betting round, forcing accept bet.");
+        //   io.in(socketChannel).emit('OnForcedAcceptBet', {id: user.id});
+        //   break;
+        //   case "Hitting Round":
+        //   console.log(user.name+" not responded in hitting round => betting round, forcing accept bet.");
+        //   io.in(socketChannel).emit('OnForcedAcceptBet', {id: user.id});
+        //   break;
+        //   default:
+        // }
+
+      console.log("User not responded in betting round, forcing forfeit.");
+      io.in(roomChannel).emit('OnForcedForfeit', {id: user.id});
+      break;
+      case "Blackjack Round":
+        if(user)
+        {
+          if(!user.hasChecked)
+          {
+            console.log("User not responded in blackjack round, forcing check.");
+            io.in(roomChannel).emit('OnForcedChecked', {id: user.id});
+          }
+        }
+      break;
+      case "Hitting Round":
+      if(user)
+      {
+        if(!user.standTaken && !user.hasChecked)
+        {
+          console.log("User not responded in hitting round, forcing stand.");
+          io.in(roomChannel).emit('OnForcedStand', {id: user.id});
+        }else if(user.standTaken && !user.hasChecked)
+        {
+          console.log("User not responded in hitting round, forcing check.");
+          io.in(roomChannel).emit('OnForcedChecked', {id: user.id});
+        }
+      }
+      break;
+      case "Hitting Round Completion":
+      if(user)
+      {
+        if(!user.hasChecked)
+        {
+          console.log("User not responded in Hitting Round Completion, forcing check.");
+          io.in(roomChannel).emit('OnForcedChecked', {id: user.id});
+        }
+      }
+      break;
+      default:
+    }
+    console.log("ITS WORKING!!!!");
+  }, roomChannel);
+}
