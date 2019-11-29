@@ -573,3 +573,26 @@ function checkWinner(socketChannel)
      }
    }
 }
+
+function checkMaxRaiseLimit(id, socketChannel)
+{
+  for(var i = 0; i < roomlist[socketChannel].players.length; i++)
+  {
+    let tempVar = 0;
+    if(roomlist[socketChannel].players[i].id != id)
+    {
+      if(tempVar < roomlist[socketChannel].players[i].gold + roomlist[socketChannel].players[i].goldOnTable)
+      {
+        tempVar = roomlist[socketChannel].players[i].gold + roomlist[socketChannel].players[i].goldOnTable;
+
+        let data = {
+          id: id,
+          raiseLimit: tempVar
+        }
+
+        io.in(socketChannel).emit('checkMaxRaiseLimit', data);
+        return tempVar;
+      }
+    }
+  }
+}
