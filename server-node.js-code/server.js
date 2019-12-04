@@ -859,3 +859,39 @@ function checkIndividualWinnerAfterSplitting(socketChannel)
       io.in(socketChannel).emit('OnStakeUpdated', roomlist[socketChannel].players[i]);
     }
    }
+   
+
+function analyze(players)
+{
+   let winner = [];
+   let totalWinners=1;
+   winner[0]=players[0];
+
+   for(var i = 1; i <= players.length-1; i++)
+   {
+     //single winner case
+     if(i > 0)
+     {
+       if(winner[0].points < players[i].points)
+       {
+       // remove all prev indexes and insert on 0th
+       winner = [];
+       let index = i;
+       winner[0]=players[index];
+       totalWinners=1;
+      }else if(winner[0].points == players[i].points){
+       //draw case
+       winner[totalWinners]=players[i];
+       totalWinners++;
+      }
+    }
+   }
+
+   if(totalWinners > 1)
+   {
+     console.log("stalemate");
+   }else if(totalWinners == 1)
+   {
+     console.log(winner[0].name + " is winner with points: " +winner[0].points);
+   }
+}
