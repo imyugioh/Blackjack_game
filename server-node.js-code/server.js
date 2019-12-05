@@ -895,3 +895,42 @@ function analyze(players)
      console.log(winner[0].name + " is winner with points: " +winner[0].points);
    }
 }
+
+function checkSplit(socketChannel)
+{
+  let val = roomlist[socketChannel].players.every((val, i, arr) => val.split === true);
+  console.log(val);
+  return val;
+}
+
+function splitNone(socketChannel)
+{
+  let val = roomlist[socketChannel].players.every((val, i, arr) => val.split === false);
+  console.log(val);
+  return val;
+}
+
+function updateUserInDatabase(user)
+{
+  usermodel.findOne({_id:user.refid}, function(err, res) {
+    if (err)
+      return console.log(err);
+    if (!res) {
+      socket.emit('error_message', {msg: "Incorrect User id", errcode : 2});
+      return;
+    }
+    //incorrect credit data
+    //end
+    let newGold_delta = user.gold;
+    let newcredits_delta = user.credits;
+    usermodel.findOneAndUpdate({_id:info.refid}, {gold: newGold_delta}, {credits: crypto.encrypt(newcredits_delta)}, {upsert:true}, function(err, res){
+    if (err) return console.log(err);
+
+    console.log(user.name +" updated in the database.");
+    // socket.emit('OnUserUpdated', user);
+    io.in(socket.channel).emit('OnUserUpdated', user);
+
+      ///res.credits
+    });
+  });
+}
