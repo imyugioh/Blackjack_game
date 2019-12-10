@@ -934,3 +934,95 @@ function updateUserInDatabase(user)
     });
   });
 }
+
+//end functions
+io.on('connection', function(socket){
+
+  console.log('A player connected. id :', socket.id);
+
+  socket.on('checkMaxRaiseLimit', function(data){
+    checkMaxRaiseLimit(data, socket.channel);
+  });
+
+	socket.emit('playerID', socket.id);
+
+  socket.on('OnRestartRequested', function(data)
+  {
+    let user = _.findWhere(roomlist[socket.channel].players, {id : socket.id});
+
+    if(user)
+    {
+      user.restartRequested = true;
+
+      for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+      {
+        if(roomlist[socket.channel].players[i].id != user.id && !roomlist[socket.channel].players[i].restartRequested)
+        {
+          let data = {
+            id: roomlist[socket.channel].players[i].id,
+            opponentName: user.name
+          }
+
+          io.in(socket.channel).emit('OnRematchRequested', data);
+        }
+      }
+    }
+
+    if(roomlist[socket.channel].players.every((val, i, arr) => val.restartRequested === true))
+    {
+      io.in(socket.channel).emit('OnRestartRequested');
+    }
+  });
+
+  socket.on('OnRestart', function(data){
+    //DO STUFF HERE
+    for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+    {
+      if(roomlist[socket.channel].players[i].id === data)
+      {
+        roomlist[socket.channel].tempPlayerId = "";
+        roomlist[socket.channel].players[i].lastCardID = "";
+        roomlist[socket.channel].players[i].lastCardPoints = "";
+        roomlist[socket.channel].players[i].split = false;
+        roomlist[socket.channel].players[i].splitPoints = 0;
+        //roomlist[socket.channel].hands = [];
+        roomlist[socket.channel].players[i].hands.splice(0,roomlist[socket.channel].players[i].hands.length);
+        roomlist[socket.channel].players[i].DoubleDown = false;
+        roomlist[socket.channel].players[i].allIn = false;
+        roomlist[socket.channel].players[i].isReady = false;
+        roomlist[socket.channel].players[i].betAccepted = false;
+        roomlist[socket.channel].players[i].goldOnTable = 0;
+        roomlist[socket.channel].players[i].previousGoldOnTable = 0;
+        //roomlist[socket.channel].players[i].gold = 0;
+        roomlist[socket.channel].players[i].points = 0;
+        roomlist[socket.channel].players[i].insuredAmount = 0;
+        roomlist[socket.channel].players[i].insurance = false;
+        roomlist[socket.channel].players[i].isBusted = false;
+        roomlist[socket.channel].players[i].won = false;
+        roomlist[socket.channel].players[i].standTaken = false;
+        roomlist[socket.channel].players[i].forfeited = false;
+        roomlist[socket.channel].players[i].hasChecked = false;
+        roomlist[socket.channel].players[i].currentRaiseInLimit = 0;
+        roomlist[socket.channel].players[i].maxRaiseInLimit = 0;
+
+        console.log("All clear:");
+        io.in(socket.channel).emit('OnStakeUpdated', roomlist[socket.channel].players[i]);
+        // console.log(roomlist[socket.channel].players[i]);
+      }
+    }
+
+      if(roomlist[socket.channel].players.every((val, i, arr) => val.restartRequested === true))
+      {
+        resetRoom(socket.channel);
+        let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+        if(user)
+        {
+          console.log(roomlist[socket.channel].players.length+" accessed by: "+user.name);
+          user.isReady = false;
+          setTimeout(function() {
+              io.in(socket.channel).emit('SetReady', user);
+              console.log('Blah blah blah blah extra-blah');
+            }, 500 * i);
+        }
+      }
+    });
