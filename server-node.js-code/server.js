@@ -1026,3 +1026,46 @@ io.on('connection', function(socket){
         }
       }
     });
+
+    socket.on('verifyuser', function(data){
+      usermodel.findOne({username: data.name, password: data.password}).then(res=> {
+        if (res){
+          console.log(loggedUsers);
+          console.log(res);
+          let user = _.findWhere(loggedUsers, {username: data.name});
+
+          if(!user)
+          {
+            let resObj = {
+              id: socket.id,
+              username: res.username,
+              email: res.email
+            }
+            loggedUsers.push(resObj);
+            console.log(loggedUsers);
+            socket.emit('OnUserVerified', {id: socket.id, refid: res._id, name: res.username, email: res.email, gold: res.gold, credits: parseFloat(crypto.decrypt(res.credits)).toFixed(2), gender: res.gender === 1 ? "male" : "female"});
+          }else {
+            socket.emit('error_message', {msg: "User: "+res.username +" is currently active in another game session, please close that session and try again.", errcode: 6});
+          }
+          // if(checkFurther)
+          // {
+          //
+          //   if(!user)
+          //   {
+          //     socket.emit('OnUserVerified', {id: socket.id, refid: res._id, name: res.username, email: res.email, gold: res.gold, credits: parseFloat(crypto.decrypt(res.credits)).toFixed(2), gender: res.gender === 1 ? "male" : "female"});
+          //   }else {
+          //     socket.emit('error_message', {msg: "User: "+res.username +" is currently active in another game session, please close that session and try again.", errcode: 6});
+          //   }
+          // }else {
+          //   socket.emit('OnUserVerified', {id: socket.id, refid: res._id, name: res.username, email: res.email, gold: res.gold, credits: parseFloat(crypto.decrypt(res.credits)).toFixed(2), gender: res.gender === 1 ? "male" : "female"});
+          // }
+        }
+        else {
+          socket.emit('OnLoginFailed', {reason: "Invalid User name or password", errcode: 4});
+          console.log("Invalid User name or password");
+        }
+      }).catch(err => {
+        socket.emit('OnLoginFailed', {reason: "User Already Exists", errcode: 5});
+        console.error(err);
+      });
+    });
