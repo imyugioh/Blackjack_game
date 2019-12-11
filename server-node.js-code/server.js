@@ -1069,3 +1069,38 @@ io.on('connection', function(socket){
         console.error(err);
       });
     });
+
+    socket.on('updatecredits', function(info){
+      console.log(info);
+        usermodel.findOne({_id:info.refid}, function(err, res) {
+          if (err)
+            return console.log(err);
+          if (!res) {
+            console.log("Incorrect user id.");
+            socket.emit('error_message', {msg: "Incorrect User id", errcode : 2});
+            return;
+          }
+          //incorrect credit data
+          //end
+  
+          let newGold_delta = res.gold - info.priceGold;
+  
+          let newcredits_delta = parseFloat(crypto.decrypt(res.credits)) + info.credits_delta;
+          usermodel.findOneAndUpdate({_id:info.refid}, {gold: newGold_delta >= 0 ? newGold_delta : res.gold, credits: crypto.encrypt(newcredits_delta.toString())}, {upsert:true}, function(err, res){
+            if (err) return console.log(err);
+            let user = _.findWhere(roomlist[socket.channel].players, {id: info.id});
+  
+            if(user)
+            {
+              user.gold = res.gold;
+              user.credits = parseFloat(crypto.decrypt(res.credits)).toFixed(2);
+  
+              // io.in(socket.channel).emit('OnUserUpdated', user);
+              io.in(socket.channel).emit('OnUserUpdated', user);
+  
+            }
+            ///res.credits
+          });
+        });
+      });
+  
