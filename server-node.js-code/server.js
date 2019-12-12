@@ -1138,3 +1138,91 @@ io.on('connection', function(socket){
             });
         });
     
+  socket.on('register', function(info){
+    let defaultCoin = 50;
+    let newUser = new usermodel({
+      username:info.username,
+      password:info.password,
+      email: info.email,
+      gender: info.gender,
+      credits: crypto.encrypt(defaultCoin.toString()),
+      gold: 25000,
+      bitcoin_id: info.bitcoin + socket.id
+    });
+
+    newUser.save().then(res => {
+
+      let user = {
+        id: res.id,
+        userid: socket.id,
+        username: res.username,
+        password: res.password,
+        email: res.email,
+        gender: res.gender,
+        credits: defaultCoin,
+        bitcoin_id: res.bitcoin_id
+      }
+      socket.emit('OnRegistrationSuccessful', user);
+      console.log("User successfully saved. User name:", res.username);
+    }).catch(err => {
+      console.log(err);
+      socket.emit('error_message', {msg : "User Already Exists or error occured", errcode : 1});
+      console.error("User Already Exists or error occured");
+    })
+  });
+
+socket.on('login', function(data){
+  //check users from database
+  //end check
+  //if user exist
+  let user = {
+  id:socket.id,
+  refid: data.refid,
+  gender: data.gender,
+  goldOnTable:0,
+  previousGoldOnTable: 0,
+  gold: data.gold,
+  credits: data.credits,
+  playerIndex: 0,
+  points: 0,
+  insuredAmount: 0,
+  insurance: false,
+  name: data.name,
+  roomid: -1,
+  isOccupied: false,
+  isReady: false,
+  betAccepted: false,
+  isBusted: false,
+  won: false,
+  standTaken: false,
+  forfeited: false,
+  hasChecked: false,
+  currentRaiseInLimit: 0,
+  maxRaiseInLimit: 0,
+  restartRequested : false,
+  allIn: false,
+  DoubleDown: false,
+  split: false,
+  splitPoints: 0,
+  hands: [],
+  lastCardPoints : 0,
+  lastCardID : ""
+  }
+  // GenerateRoom();
+  allUsers.push(user);
+  console.log(data.name, 'has connected to blackjack');
+  try{
+    socket.emit('roomlist', getRoomList());
+  }
+  catch(e)
+  {
+    console.log("//////////Begin//////////")
+    console.log(e);
+    console.log("/////////End//////////");
+  }
+  finally
+  {
+    console.log("Should have no errors.");
+  }
+  console.log("Looks okay to me.");
+});
