@@ -1226,3 +1226,30 @@ socket.on('login', function(data){
   }
   console.log("Looks okay to me.");
 });
+
+socket.on('playerCreated', function(data)
+{
+roomlist[socket.channel].players[data.playerIndex].isOccupied = data.isOccupied;
+roomlist[socket.channel].players[data.playerIndex].gold = data.gold;
+roomlist[socket.channel].players[data.playerIndex].goldOnTable = data.goldOnTable;
+roomlist[socket.channel].players[data.playerIndex].playerIndex = data.playerIndex;
+});
+
+socket.on('UpdateStake', function(data) {
+   console.log("updateStake request received");
+  // console.log(roomlist[socket.channel].players);
+
+  let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+  if(user)
+  {
+    user.gold = data.gold;
+    updateTotalBet(data.goldOnTable - user.goldOnTable,  socket.channel );
+    user.goldOnTable = data.goldOnTable;
+
+    console.log("updating user data against ID: "+data.id);
+    console.log(user);
+
+    io.in(socket.channel).emit('OnStakeUpdated', user);
+  }
+});
