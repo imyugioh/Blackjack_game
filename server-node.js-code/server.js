@@ -1253,3 +1253,13 @@ socket.on('UpdateStake', function(data) {
     io.in(socket.channel).emit('OnStakeUpdated', user);
   }
 });
+socket.on('ClearStake', function(id){
+  let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+  if(user){
+    user.gold += (user.previousGoldOnTable - user.goldOnTable) > 0 ? (user.previousGoldOnTable - user.goldOnTable) : (user.goldOnTable - user.previousGoldOnTable);
+    user.goldOnTable = user.previousGoldOnTable;
+    io.in(socket.channel).emit('OnStakeUpdated', user);
+  }
+});
+
