@@ -1263,3 +1263,78 @@ socket.on('ClearStake', function(id){
   }
 });
 
+socket.on('join_room', function(room){
+  console.log(room.id +" Room ID");
+
+  //check that rooms are full
+  //
+  let user = _.findWhere(allUsers, {id:socket.id});
+  if (!user) {
+    //unexpected user
+    //alert
+    return;
+  }
+
+  if (checkRoomFull(roomlist[room.id])) {
+    //alert this rooom is full
+    console.log(roomlist[room.id].players.length, 111);
+    socket.emit('error_message', {msg: `Room ${room.id} is Full.`, errcode: 0});
+    return;
+  }
+  else {
+    console.log(user);
+    user.roomid = room.id;
+
+    user.gold -= room.buy_in_limit;
+    // user.actualGold = user.gold;
+    // user.gold = room.buy_in_limit;
+
+    if(roomlist[room.id].customed && !roomlist[room.id].customTableCreated)
+    {
+      roomlist[room.id].buy_in_limit = room.buy_in_limit;
+      roomlist[room.id].raise_max = room.raise_max;
+      roomlist[room.id].raise_min = room.raise_min;
+      roomlist[room.id].customTableCreated = true;
+      console.log("Custom Table Created.");
+    }
+
+    roomlist[room.id].players.push(user);
+
+    //pushing the new user where it really belongs instead of sitting on ones face, it should be sitting next to it
+    roomlist[room.id].players.sort(function(a, b){return a.playerIndex - b.playerIndex});
+
+    socket.join(room.id);
+
+    socket.channel = room.id;
+
+    console.log(user.name, 'has joined room', room.id);
+    console.log("Current Round: "+roomlist[room.id].currentRound);
+
+    io.in(room.id).emit('userlist', roomlist[room.id].players); //broadcast users list of the room
+
+    io.emit('roomlist', getRoomList());
+
+    //io.emit('roomlist', roomlist); //broadcast room list of the room
+
+    socket.emit('OnRoomJoined', roomlist[socket.channel]);
+
+    socket.emit('initroom', room.id, roomlist[room.id]); //send room info to client
+
+    io.in(room.id).emit('statusinfo',`${user.name} has joined.`);
+
+    //Resets the game if it was already in progress and a player leaves and another player joins.
+    if(roomlist[room.id].currentRound != "initial" && roomlist[room.id].players.length > 1)
+    {
+      console.log("Proceeding towards game restoration.");
+      for(var i = 0; i < roomlist[room.id].players.length; i++)
+      {
+        console.log("Forced Reset Called against: " +roomlist[room.id].players[i].name);
+        let user = roomlist[room.id].players[i];
+        setTimeout(function(){
+          io.in(room.id).emit('OnForcedRestart', user);
+        }, 500 * i);
+      }
+    }
+  }
+});
+
