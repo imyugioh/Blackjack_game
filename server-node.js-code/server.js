@@ -1381,3 +1381,16 @@ socket.on('isReady', function(data) {
     }
   }
 });
+
+socket.on('OnStart', function(data){
+  if(!socket.channel)
+    return;
+
+  io.in(socket.channel).emit('OnStart', data);
+
+  // roomlist[socket.channel].turnIndex = 0;
+
+  let turnIndex = roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+  switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+});
