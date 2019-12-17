@@ -1338,3 +1338,46 @@ socket.on('join_room', function(room){
   }
 });
 
+
+socket.on('isReady', function(data) {
+
+  if (!socket.channel)
+    return;
+
+  let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+
+  if(user)
+  {
+    console.log("in isReady callback, received from: " +user.name);
+    user.restartRequested = false;
+    if(user.isReady == false)
+    {
+      user.isReady = data.isReady;
+      // console.log(roomlist[socket.channel].players);
+      if(roomlist[socket.channel].players.every((val, i, arr) => val.isReady === true))
+      {
+        roomlist[socket.channel].maximum_bet = roomlist[socket.channel].total_bet = 0;
+        console.log("All players are ready.");
+
+        roomlist[socket.channel].turnIndex = 0;
+
+        let turnIndex = roomlist[socket.channel].turnIndex;
+
+        roomlist[socket.channel].currentRound = roomlist[socket.channel].rounds[0].round;
+        // roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+        let lastWinner = _.findWhere(roomlist[socket.channel].players, {id: roomlist[socket.channel].lastWinnerID});
+        if(lastWinner)
+        {
+          console.log(lastWinner.name +" had last won the table, switching turn to it.");
+          io.in(socket.channel).emit('OnBettingRoundStarted', lastWinner.id);
+          switchTurn(lastWinner.id, socket.channel);
+        }else {
+          let thisUser = roomlist[socket.channel].players[turnIndex];
+          io.in(socket.channel).emit('OnBettingRoundStarted', thisUser.id);
+          switchTurn(thisUser.id, socket.channel);
+        }
+      }
+    }
+  }
+});
