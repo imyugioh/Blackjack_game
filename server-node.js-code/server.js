@@ -1610,3 +1610,31 @@ socket.on('OnRaiseRequested', function(data) {
 
   switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
 });
+
+socket.on('OnRaiseRequestedInGame', function(data){
+
+  let currentRound = roomlist[socket.channel].currentRound;
+  let roundData = _.findWhere(roomlist[socket.channel].rounds, {round:currentRound});
+
+  let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+  if(user)
+  {
+     if(user.currentRaiseInLimit <= 0)
+     {
+       console.log("User: "+user.name+" cannot raise anymore in this round.");
+       return;
+     }
+
+      for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+      {
+        roomlist[socket.channel].players[i].betAccepted = false;
+      }
+
+      roomlist[socket.channel].betSetPreviousy = false;
+      roomlist[socket.channel].previousRound = roomlist[socket.channel].currentRound;
+      console.log("Raise Requested in "+roomlist[socket.channel].currentRound);
+      roomlist[socket.channel].currentRound = "Betting Round";
+      io.in(socket.channel).emit('OnRaiseRequestedInGame', roomlist[socket.channel].players[roomlist[socket.channel].turnIndex]);
+    }
+});
