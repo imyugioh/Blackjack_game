@@ -1394,3 +1394,144 @@ socket.on('OnStart', function(data){
 
   switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
 });
+
+socket.on('OnBetAccepted', function(data) {
+
+  if (!socket.channel)
+    return;
+
+  let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+
+  if(user)
+  {
+    if(user.goldOnTable  < roomlist[socket.channel].maximum_bet){
+        console.log("maximum bet: " +roomlist[socket.channel].maximum_bet +" while " +user.name+"'s goldOnTable is: " +user.goldOnTable);
+        return;
+    }
+
+    if(user.betAccepted == false)
+    {
+      user.betAccepted = data.betAccepted;
+      // console.log(roomlist[socket.channel].players);
+      io.in(socket.channel).emit('OnBetAccepted', data);
+      user.previousGoldOnTable = user.goldOnTable;
+      //Update maximum and previous maximum bet only when user accepts the bet
+      if(user.goldOnTable > roomlist[socket.channel].maximum_bet){
+        roomlist[socket.channel].prev_maximum_bet = roomlist[socket.channel].maximum_bet = user.goldOnTable;
+        let someData = {
+          maximum_bet : roomlist[socket.channel].maximum_bet,
+          prev_maximum_bet : roomlist[socket.channel].prev_maximum_bet
+        }
+
+        io.in(socket.channel).emit('OnPreviousBetSet', someData);
+        io.in(socket.channel).emit('OnSetMaximumBet',someData);
+        console.log("maximum bet is : "+ roomlist[socket.channel].maximum_bet +" vs "+roomlist[socket.channel].prev_maximum_bet);
+      }
+      //End Region
+
+    //Region Taking every player that has yet to accept the bet in a temporary array
+    {
+
+      let someArray = [];
+
+      for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+      {
+        if(!roomlist[socket.channel].players[i].betAccepted)
+        {
+          someArray.push(roomlist[socket.channel].players[i]);
+        }
+      }
+
+      //Runs only if there are players who have yet to accept the bet
+      let turnSent = false;
+      if(someArray.length > 0)
+      {
+        for(var i = 0; i < someArray.length; i++)
+        {
+          if(!someArray[i].betAccepted)
+          {
+            let user = _.findWhere(roomlist[socket.channel].players, {id:someArray[i].id});
+
+            if(user)
+            {
+              let indexOf = roomlist[socket.channel].players.indexOf(user);
+              console.log("Turn index acquired.");
+              roomlist[socket.channel].turnIndex = indexOf;
+
+              let turnIndex = roomlist[socket.channel].turnIndex;
+
+              if(!turnSent)
+              {
+                turnSent = true;
+                let index = i;
+                console.log("Passing " + roomlist[socket.channel].players[turnIndex].id);
+                roomlist[socket.channel].turnIndex = indexOf;//roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+                switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+              }
+              //io.in(socket.channel).emit('OnBetAccepted', roomlist[socket.channel].players[turnIndex].id);
+              break;
+            }
+          }
+        }
+      }
+    }
+    //End Region
+
+      if(roomlist[socket.channel].players.every((val, i, arr) => val.betAccepted === true))
+      {
+        io.in(socket.channel).emit('TotalBetUpdated', roomlist[socket.channel].total_bet);
+        io.in(socket.channel).emit('OnBettingRoundCompleted', data);
+
+        console.log("All players have accepted the bet.");
+        roomlist[socket.channel].rounds[0].completed = true;
+
+        let round = _.findWhere(roomlist[socket.channel].rounds, {round: roomlist[socket.channel].previousRound});//getRound(roomlist[socket.channel].previousRound, socket.channel);
+
+        if(round){
+          //Region
+          switch (roomlist[socket.channel].previousRound) {
+            case "Blackjack Round":
+            console.log("in case: "+"Blackjack Round.");
+            roomlist[socket.channel].currentRound = roomlist[socket.channel].previousRound;
+            checkWinner(socket.channel);
+            break;
+            case "Hitting Round":
+            console.log("in case: "+"Hitting Round.");
+            roomlist[socket.channel].currentRound = "Hitting Round Completion";
+            roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+            switchTurn(socket.id, socket.channel);
+            break;
+            case "Hitting Round Completion":
+            console.log("in case: "+"Hitting Round Completion.");
+            roomlist[socket.channel].currentRound = "Game Completed";
+            checkWinnerAfterHitting(socket.channel);
+            // roomlist[socket.channel].currentRound = roomlist[socket.channel].previousRound;
+            break;
+            case "Game Completed":
+            console.log("Game already comleted boy.");
+            return;
+            break;
+            default:
+            console.log("Uthey.");
+            roomlist[socket.channel].currentRound = roomlist[socket.channel].rounds[1].round;
+          }
+        }else {
+          for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+          {
+            roomlist[socket.channel].players[i].maxRaiseInLimit = roomlist[socket.channel].players[i].currentRaiseInLimit = roomlist[socket.channel].rounds[1].raiseLimit;
+          }
+
+          // for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+          // {
+          //   roomlist[socket.channel].players[i].betAccepted = false;
+          // }
+
+          console.log("Ithey.");
+          roomlist[socket.channel].currentRound = roomlist[socket.channel].rounds[1].round;
+        }
+      }
+    }
+  }
+});
