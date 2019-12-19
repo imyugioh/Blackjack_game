@@ -1638,3 +1638,16 @@ socket.on('OnRaiseRequestedInGame', function(data){
       io.in(socket.channel).emit('OnRaiseRequestedInGame', roomlist[socket.channel].players[roomlist[socket.channel].turnIndex]);
     }
 });
+
+socket.on('switchTurn', function(data){
+  console.log("in switch turn");
+  if(roomlist[socket.channel].turnIndex + 1 < roomlist[socket.channel].players.length)
+  {
+    roomlist[socket.channel].turnIndex++;
+  }else
+    roomlist[socket.channel].turnIndex = 0;
+
+  let turnIndex = roomlist[socket.channel].turnIndex;
+
+  switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+});
