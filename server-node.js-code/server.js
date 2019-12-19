@@ -1535,3 +1535,33 @@ socket.on('OnBetAccepted', function(data) {
     }
   }
 });
+
+socket.on('OnRaiseRequested', function(data) {
+  let round = getRound(roomlist[socket.channel].previousRound, socket.channel);
+  let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+
+  if(round)
+  {
+    switch (round.round) {
+      case "Blackjack Round":
+
+        if(user.currentRaiseInLimit < 1)
+        {
+          let someData = {
+            id : user.id,
+            description : "In Blackjack round, you can't raise more than once."
+          };
+          io.in(socket.channel).emit('WriteTextOnTable',someData );
+          console.log("User: " +user.name +" has exhausted its raiseInLimit, halting raise execution.");
+          return;
+        }
+
+        if(user.currentRaiseInLimit - 1 >= 0)
+        {
+          user.currentRaiseInLimit -= 1;
+        }
+        break;
+      default:
+      console.log("RaiseLimit for: " +round.round +" is: " +round.raiseLimit+" proceeding to raise execution.");
+    }
+  }
