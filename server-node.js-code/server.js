@@ -1565,3 +1565,48 @@ socket.on('OnRaiseRequested', function(data) {
       console.log("RaiseLimit for: " +round.round +" is: " +round.raiseLimit+" proceeding to raise execution.");
     }
   }
+
+  if(user.goldOnTable < roomlist[socket.channel].maximum_bet){
+    console.log("km paisey hain ");
+    return;
+  }
+
+  updateBetAccepted(user.id,socket.channel);
+
+  user.betAccepted = true;
+  user.previousGoldOnTable = user.goldOnTable;
+
+  for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+  {
+    if(roomlist[socket.channel].players[i].id != user.id)
+    {
+      roomlist[socket.channel].players[i].betAccepted = false;
+    }
+  }
+
+  roomlist[socket.channel].prev_maximum_bet = roomlist[socket.channel].maximum_bet = user.goldOnTable;
+
+  let someData = {
+    id : user.id,
+    betAccepted : user.betAccepted,
+    prev_maximum_bet : roomlist[socket.channel].prev_maximum_bet
+  };
+
+  io.in(socket.channel).emit('OnPreviousBetSet', someData);
+  io.in(socket.channel).emit('OnRaiseRequested', someData);
+
+  console.log("Current Turn: "+roomlist[socket.channel].players[roomlist[socket.channel].turnIndex].name+" Turn Index: "+roomlist[socket.channel].turnIndex);
+  // if(roomlist[socket.channel].turnIndex + 1 < roomlist[socket.channel].players.length)
+  // {
+  //   roomlist[socket.channel].turnIndex++;
+  // }else
+  //   roomlist[socket.channel].turnIndex = 0;
+
+  roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+
+  let turnIndex = roomlist[socket.channel].turnIndex;
+
+  console.log("Current Turn: "+roomlist[socket.channel].players[turnIndex].name+" Turn Index: "+turnIndex);
+
+  switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+});
