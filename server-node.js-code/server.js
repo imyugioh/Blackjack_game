@@ -1651,3 +1651,28 @@ socket.on('switchTurn', function(data){
 
   switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
 });
+
+socket.on('insuranceAccepted', function(data){
+  console.log("In insurance accepted ");
+  let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+  console.log("1 insurance accepted by " + user.name);
+
+  if(user){
+    if(user.gold >= user.goldOnTable/2){
+      console.log("2 insurance accepted by " + user.name);
+      user.insuredAmount = user.goldOnTable/2;
+      user.gold -= user.insuredAmount;
+      user.insuranceAccepted=true;
+      let someData = {
+        id : user.id,
+        name : user.name,
+        description : "",
+        insuredAmount : user.insuredAmount
+      };
+
+      io.in(socket.channel).emit('WriteInsuranceText',someData );
+      io.in(socket.channel).emit('OnUserUpdated', user);
+    }
+  }
+
+});
