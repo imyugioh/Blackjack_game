@@ -1676,3 +1676,11 @@ socket.on('insuranceAccepted', function(data){
   }
 
 });
+
+socket.on('deductInsuranceAmount', function(data){
+  /*let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+  if(user){
+    roomlist[socket.channel].total_bet += raise_min/2;
+    console.log("insurance amount added in total bet = "+ roomlist[socket.channel].total_bet);
+  }*/
+});
