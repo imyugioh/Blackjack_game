@@ -1712,3 +1712,68 @@ socket.on('OnDouble', function(data){
     console.log(user);
   }
 });
+
+socket.on('OnDoubleRequested', function(data){
+  let userRequested = _.findWhere(roomlist[socket.channel].players,{id: socket.id});
+  if(userRequested)
+  {
+    console.log("DoubleDown requested by player: " +userRequested.name);
+    if(userRequested.gold - userRequested.goldOnTable > 0)
+    {
+      roomlist[socket.channel].total_bet += userRequested.goldOnTable;
+      userRequested.gold -= userRequested.goldOnTable;
+      userRequested.goldOnTable += userRequested.goldOnTable;
+
+      userRequested.DoubleDown = true;
+      io.in(socket.channel).emit('OnStakeUpdated', userRequested);
+      io.in(socket.channel).emit('OnDoubleAccepted', userRequested);
+    }else {
+      console.log(userRequested.name +" All-In.");
+      roomlist[socket.channel].total_bet += userRequested.gold;
+      userRequested.goldOnTable += userRequested.gold;
+      userRequested.gold -= userRequested.gold;
+      userRequested.DoubleDown = true;
+
+      io.in(socket.channel).emit('OnStakeUpdated', userRequested);
+      io.in(socket.channel).emit('OnDoubleAccepted', userRequested);
+    }
+  }
+
+  let DoubleDownAccepted = roomlist[socket.channel].players.every((val, i, arr) => val.DoubleDown === true);
+
+  if(DoubleDownAccepted)
+  {
+    //END THE GAME HERE
+    console.log("All players have accepted the doubleDown.");
+
+    for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+    {
+      roomlist[socket.channel].players[i].DoubleDown = false;
+    }
+
+    setTimeout(function(){
+      console.log("checkWinnerAfterHitting " +1);
+      checkWinnerAfterHitting(socket.channel);
+    }, 1000);
+
+  }else {
+    for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+    {
+      let user = roomlist[socket.channel].players[i];
+
+      if(!user.DoubleDown)
+      {
+
+        let someData = {
+          userA : userRequested,
+          userB : user
+        }
+
+        console.log("switching turn to: " +user.name);
+        switchTurn(user.id, socket.channel);
+        io.in(socket.channel).emit('OnDoubleRequested', someData);
+        break;
+      }
+    }
+  }
+});
