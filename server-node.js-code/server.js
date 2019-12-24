@@ -1702,3 +1702,13 @@ socket.on('hit', function(data){
     io.in(socket.channel).emit('OnHit', someData);
   }
 });
+socket.on('OnDouble', function(data){
+  //DO STUFF HERE
+  let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+  if(user)
+  {
+    user.DoubleDown = true;
+    //io.in(socket.channel).emit('OnDouble', user);
+    console.log(user);
+  }
+});
