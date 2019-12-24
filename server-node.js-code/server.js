@@ -1684,3 +1684,21 @@ socket.on('deductInsuranceAmount', function(data){
     console.log("insurance amount added in total bet = "+ roomlist[socket.channel].total_bet);
   }*/
 });
+
+socket.on('hit', function(data){
+  if (!socket.channel)
+    return;
+
+  let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+  if(user)
+  {
+    console.log(data);
+
+    let someData = {
+      id: data.id,
+      cardID : data.cardID,
+      player : user
+    }
+    io.in(socket.channel).emit('OnHit', someData);
+  }
+});
