@@ -2141,3 +2141,68 @@ socket.on('OnForfeit', function(data)
       }
 		}
 	});
+
+  socket.on('OnSplitPointsUpdated', function(data){
+    let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+    if(user)
+    {
+
+      let allStandTaken = roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true);
+      let splitAccepted = roomlist[socket.channel].players.every((val, i, arr) => val.split === true);
+
+      if(user.hands.length > 0)
+      {
+        user.hands[0].points = data.points;
+
+        if(user.hands[0].points >= 21 && !user.hands[0].standTaken)
+        {
+          console.log("//////////////////**PLAYERS DATA**////////////////////////////////");
+          console.log(roomlist[socket.channel].players);
+          console.log(user.name +" hand points exceeding or will exceed 21, setting its standTaken to true.");
+          console.log("////////////////////////**END**////////////////////////////////");
+          user.hands[0].standTaken = true;
+          io.in(socket.channel).emit('OnStand', user);
+
+          if(roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true) &&
+              roomlist[socket.channel].players.every((val, i, arr) => val.split === true))
+          {
+            console.log("Checking winner after splitting.");
+              checkWinnerAfterSplitting(socket.channel);
+          }else {
+            roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+            let turnIndex = roomlist[socket.channel].turnIndex;
+            console.log("switchint turn to : "+roomlist[socket.channel].players[turnIndex].name);
+            switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+          }
+        }
+      }
+
+      console.log(user.name+" splitPoints: "+data.points);
+      // switch (roomlist[socket.channel].currentRound) {
+      //   case "Hitting Round":
+      //   if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+      //   {
+      //       checkWinnerAfterHitting(socket.channel);
+      //   }else if(user.points > 21 && !user.standTaken) {
+      //     user.standTaken = true;
+      //     io.in(socket.channel).emit('OnStand', user);
+      //
+      //     if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+      //     {
+      //       checkWinnerAfterHitting(socket.channel);
+      //     }else {
+      //       if(roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length)
+      //       {
+      //         roomlist[socket.channel].turnIndex = 0;
+      //       }else {
+      //         roomlist[socket.channel].turnIndex += 1;
+      //       }
+      //
+      //       switchTurn(roomlist[socket.channel].players[roomlist[socket.channel].turnIndex].id, socket.channel);
+      //     }
+      //   }
+      //   break;
+      //   default:
+      // }
+    }
+  });
