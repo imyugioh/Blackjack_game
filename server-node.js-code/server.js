@@ -1875,3 +1875,75 @@ socket.on('OnStand', function(data){
     }
   }
 });
+
+socket.on('OnCheck', function(data){
+  let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+  if(user)
+  {
+    if(!user.hasChecked)
+    {
+      user.hasChecked = true;
+    }
+
+    if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true))
+    {
+      switch (roomlist[socket.channel].currentRound) {
+        case "Blackjack Round":
+          checkWinner(socket.channel);
+          console.log("In Blackjack round: Has checked all true.");
+          for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+          {
+            roomlist[socket.channel].players[i].hasChecked = false;
+            console.log("resetting hasChecked for player: " +roomlist[socket.channel].players[i].name);
+          }
+
+          let turnIndex = roomlist[socket.channel].turnIndex;
+          switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+
+        break;
+        case "Hitting Round":
+          console.log("In Hitting round: Has checked all true.");
+          console.log("checkWinnerAfterHitting " +2);
+          checkWinnerAfterHitting(socket.channel);
+        break;
+        case "Hitting Round Completion":
+        roomlist[socket.channel].previousRound = "Hitting Round Completion";
+        roomlist[socket.channel].currentRound = "Game Completed";
+
+        console.log("OnCheck Case: Hitting Round Completion: Has checked all true.");
+
+        checkWinnerAfterHitting(socket.channel);
+        // roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+        // switchTurn(socket.id, socket.channel);
+        break;
+        default:
+      }
+    }else{
+      roomlist[socket.channel].turnIndex =  roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+      let turnIndex = roomlist[socket.channel].turnIndex;
+
+      switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // if(roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+      // {
+      //   console.log("OnCheck Condition: everyone has standTaken set to true, calling checkWinnerAfterSplitting().");
+      //   checkWinnerAfterSplitting(socket.channel);
+      // }else {
+      //   console.log("OnCheck Condition: not everyone has standTaken set to true, finding the player that has yet to standTaken.");
+      //   for(var i = 0; i < roomlist[socket.channel].players.length; i++)
+      //   {
+      //     if(!roomlist[socket.channel].players[i].standTaken)
+      //     {
+      //       roomlist[socket.channel].turnIndex = i;//roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length ? 0 : roomlist[socket.channel].turnIndex + 1;
+      //       let turnIndex = roomlist[socket.channel].turnIndex;
+      //       console.log(user.name +" has yet to standTaken, swithing turn to it.");
+      //       switchTurn(roomlist[socket.channel].players[turnIndex].id, socket.channel);
+      //       break;
+      //     }
+      //   }
+      // }
+    }
+    io.in(socket.channel).emit('OnCheck', user);
+  }
+});
