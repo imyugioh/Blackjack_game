@@ -2033,3 +2033,111 @@ socket.on('OnForfeit', function(data)
     io.in(socket.channel).emit('OnForfeit', someData);
   }
 });
+
+  //checking for winners at end of blackjack round
+  socket.on('OnBlackjackRoundCompleted', function(data)
+   {
+     checkWinner(socket.channel);
+  	 console.log("blackjack winner checking ho ryi a");
+   });
+
+	socket.on('OnPointsUpdated', function(data){
+		let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+    let userWhoStartedSplit = _.findWhere(roomlist[socket.channel].players, {id: roomlist[socket.channel].tempPlayerId});
+		if(user)
+		{
+			user.points = data.points;
+			console.log(user.name+" scores: "+data.points);
+      switch (roomlist[socket.channel].currentRound) {
+        case "Blackjack Round":
+        if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.currentRaiseInLimit === 0))
+        {
+          //
+          if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true))
+            {
+              console.log(user.id +" Win in hasChecked.");
+            }else if(roomlist[socket.channel].players.every((val, i, arr) => val.currentRaiseInLimit === 0)) {
+              console.log(user.id +" Win in betAccepted.");
+            }
+
+            checkWinner(socket.channel);
+        }else {
+          console.log(user.id +" Win in else statement.");
+          roomlist[socket.channel].hitBlackjack = true;
+        }
+        break;
+        case "Hitting Round":
+        if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+        {
+          if(userWhoStartedSplit)
+          {
+            if(userWhoStartedSplit.hands.length > 0 && userWhoStartedSplit.hands[0].standTaken)
+            {
+              checkWinnerAfterSplitting(socket.channel);
+            }else {
+              switchTurn(userWhoStartedSplit.id, socket.channel);
+            }
+          }else {
+            if(roomlist[socket.channel].players.every((val, i, arr) => val.DoubleDown === false))
+            {
+              console.log("Imma here!!");
+              console.log("checkWinnerAfterHitting " +3);
+              checkWinnerAfterHitting(socket.channel);
+            }
+          }
+        }else if(user.points > 21 && !user.standTaken) {
+          user.standTaken = true;
+          io.in(socket.channel).emit('OnStand', user);
+          console.log(" userWhoStartedSplit " );
+          console.log(userWhoStartedSplit  );
+
+          if(userWhoStartedSplit)
+          {
+            if(userWhoStartedSplit.hands.length > 0 && !userWhoStartedSplit.hands[0].standTaken){
+
+            }else {
+              if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+              {
+                checkWinnerAfterSplitting(socket.channel);
+              }else {
+                if(roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length)
+                {
+                  roomlist[socket.channel].turnIndex = 0;
+                }else {
+                  roomlist[socket.channel].turnIndex += 1;
+                }
+                console.log("hitting round split condition 1");
+                switchTurn(roomlist[socket.channel].players[roomlist[socket.channel].turnIndex].id, socket.channel);
+              }
+            }
+          }else {
+            if(roomlist[socket.channel].players.every((val, i, arr) => val.hasChecked === true) || roomlist[socket.channel].players.every((val, i, arr) => val.standTaken === true))
+            {
+              if(roomlist[socket.channel].players.every((val, i, arr) => val.DoubleDown === false))
+              {
+                console.log("checkWinnerAfterHitting " +4);
+                checkWinnerAfterHitting(socket.channel);
+              }
+            }else {
+              //REGION: If no one has has accepted/requested the DoubleDown
+              if(roomlist[socket.channel].players.every((val, i, arr) => val.DoubleDown === false))
+              {
+                if(roomlist[socket.channel].turnIndex + 1 >= roomlist[socket.channel].players.length)
+                {
+                  roomlist[socket.channel].turnIndex = 0;
+                }else {
+                  roomlist[socket.channel].turnIndex += 1;
+                }
+                console.log("hitting round split condition 2");
+
+                switchTurn(roomlist[socket.channel].players[roomlist[socket.channel].turnIndex].id, socket.channel);
+              }
+              //endRegion
+            }
+          }
+        }
+        break;
+        default:
+      }
+		}
+	});
