@@ -2206,3 +2206,23 @@ socket.on('OnForfeit', function(data)
       // }
     }
   });
+
+  socket.on('toAll', function(data){ //get username, text, roomID
+    console.log(data);
+    let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+    if(user)
+    {
+      console.log("Recieved: " +data.message+" From: " +data.id);
+
+      let someData = {
+        id: socket.id,
+        channel: socket.channel,
+        sender: user.name,
+        message: data.message
+      };
+
+      io.in(socket.channel).emit('OnChatMessageReceived', saveChathistory(someData));
+    }
+    io.in(socket.channel).emit('toAll', saveRoomMessage(data));
+  });
