@@ -2274,3 +2274,11 @@ socket.on('OnForfeit', function(data)
       delete socket.channel;
     }
   });
+  
+  //checking for winners at end of blackjack round
+	socket.on('OnHittingRoundCompleted', function(data)
+  {
+     console.log("hitting dey bd winner checking ho ryi a");
+     console.log("checkWinnerAfterHitting " +5);
+     checkWinnerAfterHitting(socket.channel);
+  });
