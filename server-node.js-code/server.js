@@ -2282,3 +2282,60 @@ socket.on('OnForfeit', function(data)
      console.log("checkWinnerAfterHitting " +5);
      checkWinnerAfterHitting(socket.channel);
   });
+
+  socket.on('disconnect', function(){  //unexpected disconnect
+    console.log('A player disconnected. id:', socket.id);
+
+    let loggedUser = _.findWhere(loggedUsers, {id: socket.id});
+
+    if(loggedUser)
+    {
+      loggedUsers = _.without(loggedUsers, loggedUser);
+    }
+
+    if (socket.channel)
+    {
+      // if he was playing in the room
+      let user = _.findWhere(roomlist[socket.channel].players, {id:socket.id});
+
+      if (user) {
+
+        destroyTimer(socket.channel);
+
+        console.log(`${user.name} has left room ${socket.channel}`);
+
+        //remove user from room
+        roomlist[socket.channel].players = _.without(roomlist[socket.channel].players, user);
+
+        //update user list
+        io.in(socket.channel).emit('userlist', roomlist[socket.channel].players);
+
+        io.emit('roomlist', getRoomList());
+
+        //io.emit('roomlist', roomlist); //broadcast room list of the room
+
+        io.in(socket.channel).emit('statusinfo', `${user.name} has left this room.`);
+        io.in(socket.channel).emit('OnUserLeftTable', user);
+        if (roomlist[socket.channel].players.length == 0 && socket.channel > 5 && allUsers.length <= 36) { // remove after 7th room
+          console.log('delete');
+          // roomlist.splice(socket.channel, 1);
+        }else if(roomlist[socket.channel].players.length == 1)
+        {
+          console.log("Requesting: " +roomlist[socket.channel].players[0].name+" to disable controls.");
+          io.in(socket.channel).emit('OnCeasePlaying', roomlist[socket.channel].players[0].id);
+          //io.in(socket.channel).emit('OnForcedRestart', roomlist[socket.channel].players[0]);
+        }
+
+        resetRoom(socket.channel);
+        socket.leave(socket.channel);
+        delete socket.channel;
+      }
+    }
+    //else
+    user = _.findWhere(allUsers, {id:socket.id});
+
+    if (user){
+      console.log(`${user.name} has left blackjack`);
+      allUsers = _.without(allUsers, user);
+    }
+  });
