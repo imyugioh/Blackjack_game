@@ -2339,3 +2339,35 @@ socket.on('OnForfeit', function(data)
       allUsers = _.without(allUsers, user);
     }
   });
+
+  socket.on('OnSplitRequested', function(data){
+
+    let user = _.findWhere(roomlist[socket.channel].players, {id: socket.id});
+
+    if (user) {
+      //Region: if nobody has requested split before
+      if(splitNone(socket.channel))
+      {
+        user.lastCardID = data.cardID;
+        user.lastCardPoints = data.cardPoint;
+        roomlist[socket.channel].tempPlayerId = socket.id;
+
+        console.log(user.name +" is the guy who started the splitting round with scores: " +user.points);
+      }
+      //endRegion
+      if(user.gold - user.goldOnTable > 0)
+      {
+        user.gold -= user.goldOnTable;
+        roomlist[socket.channel].total_bet += user.goldOnTable;
+
+        user.goldOnTable += user.goldOnTable;
+
+        user.split = true;
+
+        io.in(socket.channel).emit('OnStakeUpdated', user);
+
+        console.log(user.name+" has accepted the split Request with scores: " +user.points);
+      }else{
+        console.log(user.name+" cannot accept the split Request, not enough gold to double the bet.");
+      }
+    }
